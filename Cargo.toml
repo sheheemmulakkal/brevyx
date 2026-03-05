@@ -5,6 +5,10 @@ edition     = "2021"
 description = "Production-grade Ubuntu wellness daemon with animated GTK4 reminders"
 license     = "MIT"
 
+[lib]
+name = "zenguard"
+path = "src/lib.rs"
+
 [[bin]]
 name = "zenguard"
 path = "src/main.rs"
@@ -34,6 +38,13 @@ version = "0.20"
 # daemon (GTK4 only) compiles without GTK3 headers.  Phase 5 enables it.
 [dependencies.appindicator3]
 version  = "0.3"
+optional = true
+
+# GTK3 is required only for the tray icon menu (appindicator3 uses GTK3 menus).
+# Kept optional and gated behind the `tray` feature to avoid pulling in GTK3
+# headers for the core daemon build.
+[dependencies.gtk]
+version  = "0.18"
 optional = true
 
 # ── Error handling ────────────────────────────────────────────────────────────
@@ -82,7 +93,7 @@ version = "5"
 [features]
 # Enable system-tray support.
 # Requires: sudo apt install libgtk-3-dev libayatana-appindicator3-dev
-tray = ["appindicator3"]
+tray = ["appindicator3", "gtk"]
 
 [dev-dependencies]
 tempfile = "3"

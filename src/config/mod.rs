@@ -15,7 +15,7 @@
 //!
 //! # Usage
 //!
-//! ```no_run
+//! ```ignore
 //! use zenguard::config;
 //!
 //! // One-shot load (synchronous):
@@ -48,16 +48,16 @@ pub mod schema;
 // write `use crate::config::ZenGuardConfig` instead of
 // `use crate::config::schema::ZenGuardConfig`.
 #[allow(unused_imports)]
-pub use schema::{AnimationStyle, GeneralConfig, OverlayConfig, ReminderConfig,
-                 TrayConfig, ZenGuardConfig};
+pub use schema::{
+    AnimationStyle, GeneralConfig, OverlayConfig, ReminderConfig, TrayConfig, ZenGuardConfig,
+};
 
 // ── Bundled default ────────────────────────────────────────────────────────────
 
 /// The config file shipped inside the binary as a compile-time fallback.
 ///
 /// Resolved relative to `src/config/mod.rs` → `../../config/default_config.toml`.
-const BUNDLED_DEFAULT_TOML: &str =
-    include_str!("../../config/default_config.toml");
+const BUNDLED_DEFAULT_TOML: &str = include_str!("../../config/default_config.toml");
 
 // ── Path helpers ───────────────────────────────────────────────────────────────
 
@@ -137,33 +137,32 @@ pub fn watch_config(
     let (tx, rx) = watch::channel(initial);
 
     // Clone for the callback closure (path is also needed inside the thread)
-    let path_for_cb  = path.clone();
+    let path_for_cb = path.clone();
     let path_for_dir = path.clone();
 
     // The notify callback runs on notify's internal inotify thread.
     // `watch::Sender::send` is synchronous — safe to call from any thread.
-    let mut watcher =
-        notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
-            match res {
-                Ok(event) if event.kind.is_modify() || event.kind.is_create() => {
-                    debug!("config file event: {:?}", event.kind);
-                    match load_from_path(&path_for_cb) {
-                        Ok(cfg) => {
-                            if tx.send(cfg).is_err() {
-                                // All receivers dropped — nothing to do
-                                debug!("config watch: all receivers dropped");
-                            } else {
-                                info!("config hot-reloaded");
-                            }
+    let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+        match res {
+            Ok(event) if event.kind.is_modify() || event.kind.is_create() => {
+                debug!("config file event: {:?}", event.kind);
+                match load_from_path(&path_for_cb) {
+                    Ok(cfg) => {
+                        if tx.send(cfg).is_err() {
+                            // All receivers dropped — nothing to do
+                            debug!("config watch: all receivers dropped");
+                        } else {
+                            info!("config hot-reloaded");
                         }
-                        Err(e) => warn!("config hot-reload failed: {e:#}"),
                     }
+                    Err(e) => warn!("config hot-reload failed: {e:#}"),
                 }
-                Ok(_)   => {} // remove / access / other events — ignore
-                Err(e)  => error!("config watcher error: {e}"),
             }
-        })
-        .context("creating notify config watcher")?;
+            Ok(_) => {} // remove / access / other events — ignore
+            Err(e) => error!("config watcher error: {e}"),
+        }
+    })
+    .context("creating notify config watcher")?;
 
     // Watch the parent directory rather than the file directly so that
     // editor atomic-rename writes (e.g. Vim's :w) are detected correctly.
@@ -174,9 +173,7 @@ pub fn watch_config(
 
     watcher
         .watch(&watch_dir, RecursiveMode::NonRecursive)
-        .with_context(|| {
-            format!("watching config directory {}", watch_dir.display())
-        })?;
+        .with_context(|| format!("watching config directory {}", watch_dir.display()))?;
 
     // Spawn a thread whose sole job is to keep the watcher alive.
     // The watcher itself delivers events via its internal inotify thread;
@@ -205,7 +202,7 @@ pub fn watch_config(
 ///
 /// This function is `pub(crate)` so unit tests can call it with an arbitrary
 /// path without going through `config_path()`.
-pub(crate) fn load_from_path(path: &Path) -> Result<ZenGuardConfig> {
+pub fn load_from_path(path: &Path) -> Result<ZenGuardConfig> {
     if !path.exists() {
         info!(
             path = %path.display(),
@@ -214,28 +211,24 @@ pub(crate) fn load_from_path(path: &Path) -> Result<ZenGuardConfig> {
         write_bundled_default(path)?;
         // Parse the bundled TOML directly rather than re-reading the file
         // we just wrote, to keep the cold-start path offline-safe.
-        return toml::from_str(BUNDLED_DEFAULT_TOML)
-            .context("parsing bundled default config");
+        return toml::from_str(BUNDLED_DEFAULT_TOML).context("parsing bundled default config");
     }
 
     let raw = std::fs::read_to_string(path)
         .with_context(|| format!("reading config file {}", path.display()))?;
 
-    toml::from_str(&raw)
-        .with_context(|| format!("parsing TOML in {}", path.display()))
+    toml::from_str(&raw).with_context(|| format!("parsing TOML in {}", path.display()))
 }
 
 /// Writes `BUNDLED_DEFAULT_TOML` to `path`, creating parent directories as
 /// needed.
 fn write_bundled_default(path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).with_context(|| {
-            format!("creating config directory {}", parent.display())
-        })?;
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating config directory {}", parent.display()))?;
     }
-    std::fs::write(path, BUNDLED_DEFAULT_TOML).with_context(|| {
-        format!("writing default config to {}", path.display())
-    })?;
+    std::fs::write(path, BUNDLED_DEFAULT_TOML)
+        .with_context(|| format!("writing default config to {}", path.display()))?;
     info!(path = %path.display(), "default config written");
     Ok(())
 }
@@ -367,20 +360,34 @@ pause_on_startup = true
         assert!(cfg.tray.pause_on_startup);
 
         // Fields absent from the file should match the Default implementation
-        assert_eq!(cfg.general.autostart,          def.general.autostart,
-            "autostart should fall back to default");
-        assert_eq!(cfg.tray.show_tray,             def.tray.show_tray,
-            "show_tray should fall back to default");
-        assert_eq!(cfg.overlay.dim_opacity,        def.overlay.dim_opacity,
-            "dim_opacity should fall back to default");
-        assert_eq!(cfg.overlay.duration_seconds,   def.overlay.duration_seconds,
-            "duration_seconds should fall back to default");
-        assert_eq!(cfg.overlay.allow_skip,         def.overlay.allow_skip,
-            "allow_skip should fall back to default");
-        assert_eq!(cfg.overlay.skip_after_seconds, def.overlay.skip_after_seconds,
-            "skip_after_seconds should fall back to default");
-        assert_eq!(cfg.overlay.animation_style,    def.overlay.animation_style,
-            "animation_style should fall back to default");
+        assert_eq!(
+            cfg.general.autostart, def.general.autostart,
+            "autostart should fall back to default"
+        );
+        assert_eq!(
+            cfg.tray.show_tray, def.tray.show_tray,
+            "show_tray should fall back to default"
+        );
+        assert_eq!(
+            cfg.overlay.dim_opacity, def.overlay.dim_opacity,
+            "dim_opacity should fall back to default"
+        );
+        assert_eq!(
+            cfg.overlay.duration_seconds, def.overlay.duration_seconds,
+            "duration_seconds should fall back to default"
+        );
+        assert_eq!(
+            cfg.overlay.allow_skip, def.overlay.allow_skip,
+            "allow_skip should fall back to default"
+        );
+        assert_eq!(
+            cfg.overlay.skip_after_seconds, def.overlay.skip_after_seconds,
+            "skip_after_seconds should fall back to default"
+        );
+        assert_eq!(
+            cfg.overlay.animation_style, def.overlay.animation_style,
+            "animation_style should fall back to default"
+        );
 
         // Reminders absent from the file → full default set
         assert_eq!(
@@ -459,7 +466,10 @@ animation_style = "does_not_exist"
         assert!(path.exists(), "default config should be written to disk");
 
         // Spot-check a few defaults that are defined in default_config.toml
-        assert!(!cfg.reminders.is_empty(), "default reminders should be present");
+        assert!(
+            !cfg.reminders.is_empty(),
+            "default reminders should be present"
+        );
         assert_eq!(cfg.overlay.duration_seconds, 20);
         assert!(cfg.overlay.allow_skip);
         assert_eq!(cfg.overlay.skip_after_seconds, 5);

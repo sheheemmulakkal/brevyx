@@ -48,9 +48,9 @@ pub struct ZenGuardConfig {
 impl Default for ZenGuardConfig {
     fn default() -> Self {
         Self {
-            general:   GeneralConfig::default(),
-            tray:      TrayConfig::default(),
-            overlay:   OverlayConfig::default(),
+            general: GeneralConfig::default(),
+            tray: TrayConfig::default(),
+            overlay: OverlayConfig::default(),
             reminders: default_reminders(),
         }
     }
@@ -100,7 +100,7 @@ pub struct TrayConfig {
 impl Default for TrayConfig {
     fn default() -> Self {
         Self {
-            show_tray:        true,
+            show_tray: true,
             pause_on_startup: false,
         }
     }
@@ -135,10 +135,10 @@ pub struct OverlayConfig {
 impl Default for OverlayConfig {
     fn default() -> Self {
         Self {
-            animation_style:   AnimationStyle::default(),
-            dim_opacity:       0.92,
-            duration_seconds:  20,
-            allow_skip:        true,
+            animation_style: AnimationStyle::default(),
+            dim_opacity: 0.92,
+            duration_seconds: 20,
+            allow_skip: true,
             skip_after_seconds: 5,
         }
     }
@@ -147,10 +147,11 @@ impl Default for OverlayConfig {
 // ── AnimationStyle ─────────────────────────────────────────────────────────────
 
 /// The animation played on the eye graphic during an overlay.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AnimationStyle {
     /// Periodic eye-blink effect (`assets/animations/blink.css`).
+    #[default]
     BlinkEye,
 
     /// Slow breathing / opacity pulse (`assets/animations/breathe.css`).
@@ -160,12 +161,6 @@ pub enum AnimationStyle {
     ///
     /// TOML example: `animation_style = { custom = "/home/user/my_anim.css" }`
     Custom(String),
-}
-
-impl Default for AnimationStyle {
-    fn default() -> Self {
-        AnimationStyle::BlinkEye
-    }
 }
 
 // ── ReminderConfig ─────────────────────────────────────────────────────────────
@@ -218,12 +213,12 @@ pub struct ReminderConfig {
 impl Default for ReminderConfig {
     fn default() -> Self {
         Self {
-            id:               String::new(),
-            label:            String::new(),
-            message:          String::new(),
+            id: String::new(),
+            label: String::new(),
+            message: String::new(),
             interval_minutes: 20,
-            enabled:          true,
-            icon:             None,
+            enabled: true,
+            icon: None,
         }
     }
 }
@@ -235,44 +230,44 @@ impl Default for ReminderConfig {
 pub fn default_reminders() -> Vec<ReminderConfig> {
     vec![
         ReminderConfig {
-            id:               "look_away".into(),
-            label:            "Eye Rest (20-20-20)".into(),
-            message:          "Look at something 20 feet away for 20 seconds \
+            id: "look_away".into(),
+            label: "Eye Rest (20-20-20)".into(),
+            message: "Look at something 20 feet away for 20 seconds \
                                to reduce eye strain."
-                              .into(),
+                .into(),
             interval_minutes: 20,
-            enabled:          true,
-            icon:             Some("👁".into()),
+            enabled: true,
+            icon: Some("👁".into()),
         },
         ReminderConfig {
-            id:               "drink_water".into(),
-            label:            "Drink Water".into(),
-            message:          "Drink a glass of water. Staying hydrated \
+            id: "drink_water".into(),
+            label: "Drink Water".into(),
+            message: "Drink a glass of water. Staying hydrated \
                                keeps your mind sharp!"
-                              .into(),
+                .into(),
             interval_minutes: 45,
-            enabled:          true,
-            icon:             Some("💧".into()),
+            enabled: true,
+            icon: Some("💧".into()),
         },
         ReminderConfig {
-            id:               "take_walk".into(),
-            label:            "Take a Walk".into(),
-            message:          "Stand up and walk around for a few minutes. \
+            id: "take_walk".into(),
+            label: "Take a Walk".into(),
+            message: "Stand up and walk around for a few minutes. \
                                Your body will thank you."
-                              .into(),
+                .into(),
             interval_minutes: 60,
-            enabled:          true,
-            icon:             Some("🚶".into()),
+            enabled: true,
+            icon: Some("🚶".into()),
         },
         ReminderConfig {
-            id:               "take_break".into(),
-            label:            "Take a Break".into(),
-            message:          "Step away from your desk for a proper break. \
+            id: "take_break".into(),
+            label: "Take a Break".into(),
+            message: "Step away from your desk for a proper break. \
                                Rest is productive."
-                              .into(),
+                .into(),
             interval_minutes: 90,
-            enabled:          true,
-            icon:             Some("🌿".into()),
+            enabled: true,
+            icon: Some("🌿".into()),
         },
     ]
 }

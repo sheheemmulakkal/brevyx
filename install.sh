@@ -59,6 +59,23 @@ if ! pkg-config --exists gtk4 2>/dev/null; then
     exit 1
 fi
 
+# Install runtime deps that are not pulled in by the GTK4 build itself.
+# librsvg2-common provides the gdk-pixbuf SVG loader so the eye graphic renders.
+RUNTIME_DEPS=()
+if ! dpkg -l librsvg2-common &>/dev/null 2>&1; then
+    RUNTIME_DEPS+=(librsvg2-common)
+fi
+
+if [[ ${#RUNTIME_DEPS[@]} -gt 0 ]]; then
+    blue "==> Installing runtime dependencies: ${RUNTIME_DEPS[*]}..."
+    if command -v sudo &>/dev/null; then
+        sudo apt-get install -y "${RUNTIME_DEPS[@]}"
+    else
+        red "sudo not available — please run: apt-get install ${RUNTIME_DEPS[*]}"
+        exit 1
+    fi
+fi
+
 green "    Dependencies OK"
 
 # ── Build ──────────────────────────────────────────────────────────────────

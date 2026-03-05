@@ -29,7 +29,7 @@
 //! D-Bus, tests) without coupling them to the `Scheduler` itself.
 //!
 //! # Usage
-//! ```no_run
+//! ```ignore
 //! # use zenguard::scheduler::Scheduler;
 //! # use tokio::sync::mpsc;
 //! // config_rx: watch::Receiver<ZenGuardConfig> from config::watch_config()
@@ -135,10 +135,7 @@ impl Scheduler {
     /// - `sender` — sending half of a `tokio::sync::mpsc` channel; the caller
     ///   owns the receiving half and processes [`Reminder`] values as they
     ///   arrive.
-    pub fn new(
-        config_rx: watch::Receiver<ZenGuardConfig>,
-        sender: mpsc::Sender<Reminder>,
-    ) -> Self {
+    pub fn new(config_rx: watch::Receiver<ZenGuardConfig>, sender: mpsc::Sender<Reminder>) -> Self {
         Self {
             config_rx,
             sender,
@@ -176,7 +173,7 @@ impl Scheduler {
     /// Runs the scheduler loop until the config watch channel closes.
     ///
     /// Meant to be passed to `tokio::spawn`:
-    /// ```no_run
+    /// ```ignore
     /// tokio::spawn(scheduler.run());
     /// ```
     ///
@@ -214,7 +211,7 @@ impl Scheduler {
 
                 set.spawn(async move {
                     // Guard against zero-minute intervals.
-                    let secs   = cfg.interval_minutes.saturating_mul(60).max(1);
+                    let secs = cfg.interval_minutes.saturating_mul(60).max(1);
                     let period = Duration::from_secs(secs);
 
                     let mut interval = tokio::time::interval(period);
@@ -289,12 +286,12 @@ mod tests {
     fn one_reminder(id: &str, interval_minutes: u64) -> ZenGuardConfig {
         ZenGuardConfig {
             reminders: vec![ReminderConfig {
-                id:               id.to_owned(),
-                label:            id.to_owned(),
-                message:          format!("Reminder: {id}"),
+                id: id.to_owned(),
+                label: id.to_owned(),
+                message: format!("Reminder: {id}"),
                 interval_minutes,
-                enabled:          true,
-                icon:             None,
+                enabled: true,
+                icon: None,
             }],
             ..Default::default()
         }
@@ -343,7 +340,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel::<Reminder>(8);
 
         let scheduler = Scheduler::new(watch_rx, tx);
-        let handle    = scheduler.pause_handle();
+        let handle = scheduler.pause_handle();
         tokio::spawn(scheduler.run());
 
         tokio::time::advance(Duration::from_millis(1)).await;
@@ -354,7 +351,10 @@ mod tests {
 
         // Advance well past the interval.
         tokio::time::advance(Duration::from_secs(5 * 60 + 1)).await;
-        assert!(rx.try_recv().is_err(), "no reminder should arrive while paused");
+        assert!(
+            rx.try_recv().is_err(),
+            "no reminder should arrive while paused"
+        );
 
         drop(watch_tx);
     }
@@ -369,7 +369,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel::<Reminder>(8);
 
         let scheduler = Scheduler::new(watch_rx, tx);
-        let handle    = scheduler.pause_handle();
+        let handle = scheduler.pause_handle();
         tokio::spawn(scheduler.run());
 
         tokio::time::advance(Duration::from_millis(1)).await;
@@ -388,7 +388,9 @@ mod tests {
 
         // Advance to the next tick and confirm the reminder fires exactly once.
         tokio::time::advance(Duration::from_secs(5 * 60)).await;
-        rx.recv().await.expect("should fire at next tick after resume");
+        rx.recv()
+            .await
+            .expect("should fire at next tick after resume");
 
         // No burst — only one reminder.
         assert!(rx.try_recv().is_err(), "no burst after resume");
@@ -413,7 +415,10 @@ mod tests {
 
         // 4 minutes in — old timer hasn't fired yet (fires at 10 min).
         tokio::time::advance(Duration::from_secs(4 * 60)).await;
-        assert!(rx.try_recv().is_err(), "no fire at 4 min (old 10-min timer)");
+        assert!(
+            rx.try_recv().is_err(),
+            "no fire at 4 min (old 10-min timer)"
+        );
 
         // Reload config: switch to a 5-minute interval.
         watch_tx.send(one_reminder("eye_rest", 5)).unwrap();
@@ -428,11 +433,16 @@ mod tests {
 
         // Advance to 4 min 59 s into the new interval — still before the new fire.
         tokio::time::advance(Duration::from_secs(4 * 60 + 59)).await;
-        assert!(rx.try_recv().is_err(), "no fire before new 5-min interval elapses");
+        assert!(
+            rx.try_recv().is_err(),
+            "no fire before new 5-min interval elapses"
+        );
 
         // Cross the new 5-minute threshold.
         tokio::time::advance(Duration::from_secs(2)).await;
-        rx.recv().await.expect("should fire at the new 5-min interval");
+        rx.recv()
+            .await
+            .expect("should fire at the new 5-min interval");
 
         // Confirm no duplicate or ghost fire from the old 10-min timer.
         assert!(rx.try_recv().is_err(), "no duplicate or ghost fire");

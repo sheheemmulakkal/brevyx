@@ -1,54 +1,84 @@
-//! ZenGuard — production-grade Ubuntu wellness daemon.
+//! ZenGuard binary entry point.
 //!
-//! # Phase status
-//! - **Phase 1** ✓ Config system (`src/config/`)
-//! - Phase 2   — GTK4 application bootstrap (`src/app.rs`)
-//! - Phase 3   — Reminder scheduler (`src/scheduler/`)
-//! - Phase 4   — Full-screen overlay (`src/overlay/`)
-//! - Phase 5   — System tray + daemon lifecycle (`src/tray/`, `src/daemon/`)
-//!
-//! # Entry point
-//! Initialises the tracing subscriber, loads the config (triggering a
-//! first-run default write if needed), and will delegate to [`app`] in
-//! Phase 2.
+//! Parses CLI arguments, initialises the tracing subscriber, loads the
+//! configuration, and delegates to [`zenguard::app::build_and_run`].
 
-mod app;
-mod config;
-mod daemon;
-mod error;
-mod overlay;
-mod scheduler;
-mod tray;
+use std::path::PathBuf;
 
 use anyhow::Result;
-use tracing::info;
 use tracing_subscriber::{fmt, EnvFilter};
 
 fn main() -> Result<()> {
-    // ── Logging ───────────────────────────────────────────────────────────────
-    // Priority: RUST_LOG env var → config file log_level → "info" fallback.
-    // We need to bootstrap with a default filter before the config is loaded.
-    let bootstrap_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    // ── CLI argument parsing ──────────────────────────────────────────────────
+    let args: Vec<String> = std::env::args().collect();
+    let mut config_path_override: Option<PathBuf> = None;
+    let mut log_level_override: Option<String> = None;
+
+    let mut i = 1usize;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--version" | "-V" => {
+                println!("zenguard {}", env!("CARGO_PKG_VERSION"));
+                return Ok(());
+            }
+            "--help" | "-h" => {
+                print_help();
+                return Ok(());
+            }
+            "--config" | "-c" => {
+                i += 1;
+                if let Some(p) = args.get(i) {
+                    config_path_override = Some(PathBuf::from(p));
+                }
+            }
+            "--log-level" | "-l" => {
+                i += 1;
+                if let Some(l) = args.get(i) {
+                    log_level_override = Some(l.clone());
+                }
+            }
+            other => {
+                eprintln!("zenguard: unknown argument '{other}' — try --help");
+            }
+        }
+        i += 1;
+    }
+
+    // ── Tracing subscriber ────────────────────────────────────────────────────
+    //
+    // Priority: --log-level flag → RUST_LOG env var → "info" fallback.
+    let filter = match log_level_override.as_deref() {
+        Some(level) => EnvFilter::new(level),
+        None => EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+    };
 
     fmt()
-        .with_env_filter(bootstrap_filter)
+        .with_env_filter(filter)
         .with_target(false)
         .compact()
         .init();
 
-    // ── Config (Phase 1) ──────────────────────────────────────────────────────
-    let cfg = config::load_config()?;
+    // ── Configuration ─────────────────────────────────────────────────────────
+    let cfg = match &config_path_override {
+        Some(path) => zenguard::config::load_from_path(path)?,
+        None => zenguard::config::load_config()?,
+    };
 
-    info!(
-        version    = env!("CARGO_PKG_VERSION"),
-        log_level  = %cfg.general.log_level,
-        reminders  = cfg.reminders.len(),
-        "ZenGuard starting — config loaded"
+    let config_path = config_path_override.unwrap_or_else(zenguard::config::config_path);
+
+    // ── Run ───────────────────────────────────────────────────────────────────
+    zenguard::app::build_and_run(cfg, config_path)
+}
+
+fn print_help() {
+    println!(
+        "ZenGuard {ver} — wellness reminders daemon\n\n\
+         Usage: zenguard [OPTIONS]\n\n\
+         Options:\n  \
+           -c, --config <PATH>        Use a custom config file\n  \
+           -l, --log-level <LEVEL>    Set log level (trace|debug|info|warn|error)\n  \
+           -V, --version              Print version and exit\n  \
+           -h, --help                 Print this help",
+        ver = env!("CARGO_PKG_VERSION"),
     );
-
-    // ── Phase 2: GTK4 application bootstrap (not yet implemented) ────────────
-    // app::build_and_run(cfg)?;
-
-    Ok(())
 }

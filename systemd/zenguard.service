@@ -10,7 +10,7 @@ Type=simple
 # The binary is installed to ~/.local/bin by install.sh
 ExecStart=%h/.local/bin/zenguard
 Restart=on-failure
-RestartSec=10s
+RestartSec=5s
 
 # Give the GTK4 display / Wayland socket time to become available
 ExecStartPre=/bin/sleep 3
@@ -29,4 +29,4 @@ KillSignal=SIGTERM
 TimeoutStopSec=5s
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target

@@ -1,29 +1,36 @@
 /*
- * ZenGuard — Blink animation
+ * ZenGuard — Blink Eye animation
  *
- * The eye image fades to near-invisible for ~150 ms every 4 seconds,
- * replicating a natural eye blink.  GTK4's CSS animation engine applies
- * this to the widget's opacity channel.
+ * A natural double-blink cycle using only `opacity`, which is the one
+ * property GTK4's CSS engine reliably animates inside @keyframes.
+ * The eye holds open for most of the 4-second cycle, blinks once,
+ * then reopens.  A slower ambient pulse runs over the full overlay
+ * duration for a gentle luminance breath.
  *
  * Target widget class: .eye-animation
+ *
+ * NOTE: {{DURATION}} is replaced at runtime by Rust.  Do not remove it.
  */
 
-@keyframes blink {
-    /* Long open phase */
-    0%,  44% { opacity: 1;    }
-    /* Blink — close */
-    47%      { opacity: 0.08; }
-    /* Re-open */
-    50%      { opacity: 1;    }
-    /* Second blink (double-blink feel) */
-    53%      { opacity: 0.08; }
-    56%,100% { opacity: 1;    }
+@keyframes eye-blink {
+    0%   { opacity: 1.00; }
+    44%  { opacity: 1.00; }
+    47%  { opacity: 0.05; }
+    50%  { opacity: 0.05; }
+    54%  { opacity: 1.00; }
+    100% { opacity: 1.00; }
+}
+
+@keyframes eye-ambient {
+    0%   { opacity: 1.00; }
+    50%  { opacity: 0.80; }
+    100% { opacity: 1.00; }
 }
 
 .eye-animation {
-    animation-name:            blink;
-    animation-duration:        4s;
-    animation-timing-function: ease-in-out;
-    animation-iteration-count: infinite;
-    animation-fill-mode:       both;
+    animation-name:            eye-blink, eye-ambient;
+    animation-duration:        4s, {{DURATION}};
+    animation-timing-function: ease-in-out, ease-in-out;
+    animation-iteration-count: infinite, infinite;
+    animation-fill-mode:       both, both;
 }
