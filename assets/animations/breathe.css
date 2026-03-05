@@ -1,0 +1,23 @@
+/*
+ * ZenGuard — Breathe animation
+ *
+ * Slow sinusoidal opacity cycle (inhale → exhale) that encourages the user
+ * to breathe in time with the animation.
+ *
+ * Target widget class: .eye-animation
+ */
+
+@keyframes breathe {
+    /* Exhale — dim */
+    0%,  100% { opacity: 0.30; }
+    /* Inhale — bright */
+    50%       { opacity: 1.00; }
+}
+
+.eye-animation {
+    animation-name:            breathe;
+    animation-duration:        6s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-fill-mode:       both;
+}

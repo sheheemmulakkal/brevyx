@@ -1,0 +1,103 @@
+# ZenGuard — Default Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# This file is the *reference copy* shipped with ZenGuard and is also embedded
+# into the binary as a compile-time fallback (via include_str!).
+#
+# The *live* config is located at:
+#   ~/.config/zenguard/config.toml
+#
+# ZenGuard writes this file there on first run if it does not exist, giving
+# you an editable starting point.  Changes to the live file take effect
+# within a few seconds (hot-reload via inotify).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── General ───────────────────────────────────────────────────────────────────
+[general]
+# Tracing log level: trace | debug | info | warn | error
+# Override at runtime: RUST_LOG=debug zenguard
+log_level = "info"
+
+# Register the systemd user service automatically on install.
+autostart = true
+
+# ── System tray ────────────────────────────────────────────────────────────────
+[tray]
+# Show a system-tray icon (requires libayatana-appindicator3 on the host).
+show_tray = true
+
+# Start in paused state; no reminders until manually resumed via the tray menu.
+pause_on_startup = false
+
+# ── Overlay appearance ─────────────────────────────────────────────────────────
+[overlay]
+# Animation style for the eye graphic.
+#   "blink_eye" — periodic double-blink (default)
+#   "breathe"   — slow opacity pulse
+#   { custom = "/absolute/path/to/animation.css" }
+animation_style = "blink_eye"
+
+# Background opacity of the full-screen overlay (0.0 = transparent, 1.0 = opaque).
+# Values between 0.85 and 0.95 look best on composited desktops.
+dim_opacity = 0.92
+
+# How long the overlay is shown before auto-dismissing, in seconds.
+duration_seconds = 20
+
+# Allow the user to close the overlay early with a Skip button.
+allow_skip = true
+
+# Seconds into the countdown before the Skip button becomes visible.
+# Has no effect when allow_skip = false.
+skip_after_seconds = 5
+
+# ── Reminders ──────────────────────────────────────────────────────────────────
+# Each [[reminders]] entry defines one reminder category.
+# Fields: id, label, message, interval_minutes, enabled, icon (optional).
+
+# 20-20-20 eye-strain rule
+[[reminders]]
+id               = "look_away"
+label            = "Eye Rest (20-20-20)"
+message          = "Look at something 20 feet away for 20 seconds to reduce eye strain."
+interval_minutes = 20
+enabled          = true
+icon             = "👁"
+
+# Hydration reminder
+[[reminders]]
+id               = "drink_water"
+label            = "Drink Water"
+message          = "Drink a glass of water. Staying hydrated keeps your mind sharp!"
+interval_minutes = 45
+enabled          = true
+icon             = "💧"
+
+# Movement reminder
+[[reminders]]
+id               = "take_walk"
+label            = "Take a Walk"
+message          = "Stand up and walk around for a few minutes. Your body will thank you."
+interval_minutes = 60
+enabled          = true
+icon             = "🚶"
+
+# Full desk-break reminder
+[[reminders]]
+id               = "take_break"
+label            = "Take a Break"
+message          = "Step away from your desk for a proper break. Rest is productive."
+interval_minutes = 90
+enabled          = true
+icon             = "🌿"
+
+# ── Custom reminder template (commented out) ────────────────────────────────────
+# Uncomment and fill in to add your own reminders.
+#
+# [[reminders]]
+# id               = "posture_check"
+# label            = "Posture Check"
+# message          = "Check your posture — sit up straight and relax your shoulders."
+# interval_minutes = 45
+# enabled          = true
+# icon             = "🪑"

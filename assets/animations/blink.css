@@ -1,0 +1,29 @@
+/*
+ * ZenGuard — Blink animation
+ *
+ * The eye image fades to near-invisible for ~150 ms every 4 seconds,
+ * replicating a natural eye blink.  GTK4's CSS animation engine applies
+ * this to the widget's opacity channel.
+ *
+ * Target widget class: .eye-animation
+ */
+
+@keyframes blink {
+    /* Long open phase */
+    0%,  44% { opacity: 1;    }
+    /* Blink — close */
+    47%      { opacity: 0.08; }
+    /* Re-open */
+    50%      { opacity: 1;    }
+    /* Second blink (double-blink feel) */
+    53%      { opacity: 0.08; }
+    56%,100% { opacity: 1;    }
+}
+
+.eye-animation {
+    animation-name:            blink;
+    animation-duration:        4s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-fill-mode:       both;
+}

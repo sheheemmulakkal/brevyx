@@ -1,0 +1,101 @@
+[package]
+name        = "zenguard"
+version     = "0.1.0"
+edition     = "2021"
+description = "Production-grade Ubuntu wellness daemon with animated GTK4 reminders"
+license     = "MIT"
+
+[[bin]]
+name = "zenguard"
+path = "src/main.rs"
+
+# ── UI ────────────────────────────────────────────────────────────────────────
+[dependencies.gtk4]
+version  = "0.9"
+features = ["v4_12"]
+
+[dependencies.glib]
+version = "0.20"
+
+[dependencies.gdk4]
+version = "0.9"
+
+[dependencies.gio]
+version = "0.20"
+
+# ── System tray ───────────────────────────────────────────────────────────────
+# `appindicator3` wraps both the original libappindicator3 and the modern
+# Ayatana fork (libayatana-appindicator3), which is standard on Ubuntu 22.04+.
+#
+# It links against GTK3 system libraries, so the build requirement is:
+#   sudo apt install libgtk-3-dev libayatana-appindicator3-dev
+#
+# The dependency is gated behind the `tray` Cargo feature so that the core
+# daemon (GTK4 only) compiles without GTK3 headers.  Phase 5 enables it.
+[dependencies.appindicator3]
+version  = "0.3"
+optional = true
+
+# ── Error handling ────────────────────────────────────────────────────────────
+[dependencies.anyhow]
+version = "1"
+
+[dependencies.thiserror]
+version = "2"
+
+# ── Configuration (serde + serde_derive + toml) ───────────────────────────────
+[dependencies.serde]
+version  = "1"
+features = ["derive"]   # serde_derive is bundled via this feature
+
+[dependencies.toml]
+version = "0.8"
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+[dependencies.tracing]
+version = "0.1"
+
+[dependencies.tracing-subscriber]
+version  = "0.3"
+features = ["env-filter"]
+
+# ── Async runtime ─────────────────────────────────────────────────────────────
+[dependencies.tokio]
+version  = "1"
+features = ["full"]
+
+# ── Config file watching (hot reload) ─────────────────────────────────────────
+[dependencies.notify]
+version = "7"
+
+# ── Time handling ─────────────────────────────────────────────────────────────
+[dependencies.chrono]
+version  = "0.4"
+features = ["serde"]   # enables Serialize/Deserialize on chrono types
+
+# ── XDG base directories ──────────────────────────────────────────────────────
+[dependencies.dirs]
+version = "5"
+
+# ── Dev / test ────────────────────────────────────────────────────────────────
+# ── Feature flags ─────────────────────────────────────────────────────────────
+[features]
+# Enable system-tray support.
+# Requires: sudo apt install libgtk-3-dev libayatana-appindicator3-dev
+tray = ["appindicator3"]
+
+[dev-dependencies]
+tempfile = "3"
+
+# `test-util` adds `tokio::time::pause` / `advance` for deterministic timer
+# tests.  Kept in dev-dependencies so it does not ship in the production binary.
+[dev-dependencies.tokio]
+version  = "1"
+features = ["test-util"]
+
+# ── Release profile ───────────────────────────────────────────────────────────
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+strip         = "symbols"

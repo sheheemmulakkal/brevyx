@@ -1,0 +1,32 @@
+[Unit]
+Description=ZenGuard — Wellness Reminder Daemon
+Documentation=https://github.com/yourname/zenguard
+# Start after the user's graphical session is ready
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# The binary is installed to ~/.local/bin by install.sh
+ExecStart=%h/.local/bin/zenguard
+Restart=on-failure
+RestartSec=10s
+
+# Give the GTK4 display / Wayland socket time to become available
+ExecStartPre=/bin/sleep 3
+
+# Environment — passed through from the user session
+PassEnvironment=DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS
+# Allow overriding log level without editing the service file
+Environment=RUST_LOG=info
+
+# Resource limits (wellness daemon is intentionally lightweight)
+MemoryMax=128M
+CPUQuota=10%
+
+# Graceful shutdown
+KillSignal=SIGTERM
+TimeoutStopSec=5s
+
+[Install]
+WantedBy=graphical-session.target
