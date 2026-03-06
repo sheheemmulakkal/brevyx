@@ -1,9 +1,9 @@
-# ZenGuard
+# Brevyx
 
 A production-grade Ubuntu wellness daemon with animated GTK4 reminders.
 Inspired by [LookAway](https://www.lookaway.app/) (macOS) — now for Linux.
 
-ZenGuard runs silently as a systemd user service and shows full-screen animated
+Brevyx runs silently as a systemd user service and shows full-screen animated
 overlay popups at configurable intervals, reminding you to rest your eyes, drink
 water, move, and take breaks.
 
@@ -23,7 +23,7 @@ water, move, and take breaks.
 - **Hydration, movement, break** reminders on independent schedules
 - **Animated eye SVG** with two built-in CSS animations (blink / breathe) plus
   support for fully custom animations
-- **Hot-reload config** — edit `~/.config/zenguard/config.toml` and changes
+- **Hot-reload config** — edit `~/.config/brevyx/config.toml` and changes
   take effect within seconds; no restart needed
 - **System-tray icon** (Pause / Resume / Quit) via Ayatana AppIndicator
 - **Skip button** — configurable delay before it appears (or disable entirely
@@ -50,8 +50,8 @@ Rust toolchain: install from <https://rustup.rs> if not already present.
 ### Install
 
 ```bash
-git clone https://github.com/yourname/zenguard.git
-cd zenguard
+git clone https://github.com/sheheemmulakkal/brevyx.git
+cd brevyx
 chmod +x install.sh
 ./install.sh
 ```
@@ -59,10 +59,10 @@ chmod +x install.sh
 The script will:
 
 1. Build the release binary (`cargo build --release`)
-2. Install the binary to `~/.local/bin/zenguard`
-3. Copy assets to `~/.local/share/zenguard/`
-4. Write the default config to `~/.config/zenguard/config.toml` (if absent)
-5. Install and enable the systemd user service (`zenguard.service`)
+2. Install the binary to `~/.local/bin/brevyx`
+3. Copy assets to `~/.local/share/brevyx/`
+4. Write the default config to `~/.config/brevyx/config.toml` (if absent)
+5. Install and enable the systemd user service (`brevyx.service`)
 
 To install without the systemd service (e.g. for manual launches):
 
@@ -74,7 +74,7 @@ To install without the systemd service (e.g. for manual launches):
 
 ```bash
 ./uninstall.sh                # removes binary, assets, service; keeps config
-./uninstall.sh --purge-config # also removes ~/.config/zenguard/
+./uninstall.sh --purge-config # also removes ~/.config/brevyx/
 ```
 
 ---
@@ -82,11 +82,11 @@ To install without the systemd service (e.g. for manual launches):
 ## Running manually
 
 ```bash
-zenguard                        # uses ~/.config/zenguard/config.toml
-zenguard --config /path/to.toml # custom config file
-zenguard --log-level debug      # verbose logging
-zenguard --help
-zenguard --version
+brevyx                        # uses ~/.config/brevyx/config.toml
+brevyx --config /path/to.toml # custom config file
+brevyx --log-level debug      # verbose logging
+brevyx --help
+brevyx --version
 ```
 
 ---
@@ -94,22 +94,22 @@ zenguard --version
 ## Service management
 
 ```bash
-systemctl --user status  zenguard   # show current state
-systemctl --user stop    zenguard   # stop until next login
-systemctl --user start   zenguard   # start
-systemctl --user restart zenguard   # restart after config change
+systemctl --user status  brevyx   # show current state
+systemctl --user stop    brevyx   # stop until next login
+systemctl --user start   brevyx   # start
+systemctl --user restart brevyx   # restart after config change
 
-journalctl --user -u zenguard -f    # follow live logs
-journalctl --user -u zenguard -n 50 # last 50 log lines
+journalctl --user -u brevyx -f    # follow live logs
+journalctl --user -u brevyx -n 50 # last 50 log lines
 ```
 
 ---
 
 ## Configuration reference
 
-Config file: `~/.config/zenguard/config.toml`
+Config file: `~/.config/brevyx/config.toml`
 
-ZenGuard writes this file on first run if it does not exist.
+Brevyx writes this file on first run if it does not exist.
 Changes are picked up automatically (inotify hot-reload, ~1 s latency).
 
 ### `[general]`
@@ -190,20 +190,20 @@ CSS class that wraps the eye SVG.
 2. Apply it to `.eye-animation` using `animation-name`, `animation-duration`,
    `animation-iteration-count: infinite`, and your chosen timing function.
 3. Use the token `{{DURATION}}` as the value of `animation-duration`.
-   ZenGuard replaces it at runtime with the configured overlay duration (e.g.
+   Brevyx replaces it at runtime with the configured overlay duration (e.g.
    `20s`), keeping the animation cycle in sync with the countdown timer.
 4. Save the file with an absolute path and reference it in the config:
 
 ```toml
 [overlay]
-animation_style = { custom = "/home/you/.config/zenguard/pulse.css" }
+animation_style = { custom = "/home/you/.config/brevyx/pulse.css" }
 ```
 
 ### Example — colour fade
 
 ```css
 /*
- * ZenGuard — Custom "warm pulse" animation
+ * Brevyx — Custom "warm pulse" animation
  *
  * The token {{DURATION}} is replaced at runtime.  Do not remove it.
  */
@@ -232,7 +232,7 @@ Properties you can animate: `opacity`, `transform` (scale, rotate), `filter`
 
 ### Overlay does not appear
 
-- Run `zenguard --log-level debug` in a terminal and watch for errors.
+- Run `brevyx --log-level debug` in a terminal and watch for errors.
 - Ensure the GTK4 display is available (`echo $DISPLAY` or `$WAYLAND_DISPLAY`).
 - If using Wayland, confirm `XDG_RUNTIME_DIR` is set in the service environment:
   ```bash
@@ -247,7 +247,7 @@ Properties you can animate: `opacity`, `transform` (scale, rotate), `filter`
   ```bash
   dpkg -l libayatana-appindicator3-1
   ```
-- ZenGuard must have been built with `--features tray` (the standard
+- Brevyx must have been built with `--features tray` (the standard
   `install.sh` does **not** enable this by default — add it manually if needed):
   ```bash
   cargo build --release --features tray
@@ -259,13 +259,13 @@ Properties you can animate: `opacity`, `transform` (scale, rotate), `filter`
   ```bash
   sudo apt install librsvg2-common
   ```
-- ZenGuard degrades gracefully — reminders still appear without the eye graphic.
+- Brevyx degrades gracefully — reminders still appear without the eye graphic.
 
 ### Service fails to start at login
 
-- Check logs: `journalctl --user -u zenguard -n 30`
+- Check logs: `journalctl --user -u brevyx -n 30`
 - The service has a 3-second `ExecStartPre` delay so the display is ready;
-  increase it in `~/.config/systemd/user/zenguard.service` if your session
+  increase it in `~/.config/systemd/user/brevyx.service` if your session
   initialises slowly.
 - Verify `~/.local/bin` is on your `PATH`:
   ```bash
@@ -278,7 +278,7 @@ Properties you can animate: `opacity`, `transform` (scale, rotate), `filter`
   ```bash
   cat /proc/sys/fs/inotify/max_user_watches  # should be > 0
   ```
-- Some editors (notably Vim's `:w`) do atomic renames — ZenGuard watches the
+- Some editors (notably Vim's `:w`) do atomic renames — Brevyx watches the
   parent **directory** rather than the file directly, so these are handled
   correctly.
 
@@ -302,4 +302,4 @@ Properties you can animate: `opacity`, `transform` (scale, rotate), `filter`
 
 MIT — see `LICENSE` for full text.
 
-Copyright (c) 2024 ZenGuard Contributors
+Copyright (c) 2024 Brevyx Contributors

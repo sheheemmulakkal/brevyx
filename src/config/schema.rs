@@ -1,4 +1,4 @@
-//! Strongly-typed configuration schema for ZenGuard.
+//! Strongly-typed configuration schema for Brevyx.
 //!
 //! All types derive [`serde::Serialize`] / [`serde::Deserialize`] and
 //! implement [`Default`].  The `#[serde(default)]` attribute on every struct
@@ -23,12 +23,12 @@ use serde::{Deserialize, Serialize};
 // ── Root ──────────────────────────────────────────────────────────────────────
 
 /// Root configuration object, deserialised from
-/// `~/.config/zenguard/config.toml`.
+/// `~/.config/brevyx/config.toml`.
 ///
 /// Every field has a sane default so partial configs are fully supported.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
-pub struct ZenGuardConfig {
+pub struct BrevyxConfig {
     /// General daemon behaviour (log level, autostart).
     pub general: GeneralConfig,
 
@@ -45,7 +45,7 @@ pub struct ZenGuardConfig {
     pub reminders: Vec<ReminderConfig>,
 }
 
-impl Default for ZenGuardConfig {
+impl Default for BrevyxConfig {
     fn default() -> Self {
         Self {
             general: GeneralConfig::default(),
@@ -68,7 +68,7 @@ pub struct GeneralConfig {
     /// Can be overridden at runtime with the `RUST_LOG` environment variable.
     pub log_level: String,
 
-    /// Whether ZenGuard registers itself as a systemd user service on install.
+    /// Whether Brevyx registers itself as a systemd user service on install.
     pub autostart: bool,
 }
 

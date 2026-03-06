@@ -1,4 +1,4 @@
-//! System-tray icon for ZenGuard.
+//! System-tray icon for Brevyx.
 //!
 //! # Backend
 //! Uses the `appindicator3` crate, which wraps the Ayatana AppIndicator
@@ -27,7 +27,7 @@
 //!
 //! # Menu structure
 //! ```text
-//! ● ZenGuard — Active        (non-interactive label)
+//! ● Brevyx — Active        (non-interactive label)
 //! ──────────────────
 //!   Pause                    (hidden when paused)
 //!   Resume                   (hidden when running)
@@ -127,7 +127,7 @@ fn spawn_tray_impl(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'stati
     let state_for_poll = Arc::clone(&state);
 
     if let Err(e) = std::thread::Builder::new()
-        .name("zenguard-tray".into())
+        .name("brevyx-tray".into())
         .spawn(move || {
             // Initialise GTK3 on this dedicated thread.
             // The tray uses GTK3 menus (appindicator3 requirement).
@@ -137,22 +137,22 @@ fn spawn_tray_impl(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'stati
             }
 
             // ── AppIndicator ─────────────────────────────────────────────────
-            let mut indicator = AppIndicator::new("zenguard", "");
+            let mut indicator = AppIndicator::new("brevyx", "");
             // Prefer a themed icon; fall back gracefully if absent.
             if let Some(data_dir) = dirs::data_local_dir() {
-                let icon_dir = data_dir.join("zenguard");
+                let icon_dir = data_dir.join("brevyx");
                 if let Some(path) = icon_dir.to_str() {
                     indicator.set_icon_theme_path(path);
                 }
             }
-            indicator.set_icon_full("zenguard", "ZenGuard");
+            indicator.set_icon_full("brevyx", "Brevyx");
             indicator.set_status(AppIndicatorStatus::Active);
 
             // ── GTK3 menu ────────────────────────────────────────────────────
             let menu = gtk::Menu::new();
 
             // Non-interactive title label
-            let title = gtk::MenuItem::with_label("ZenGuard — Active");
+            let title = gtk::MenuItem::with_label("Brevyx — Active");
             title.set_sensitive(false);
             menu.append(&title);
             menu.append(&gtk::SeparatorMenuItem::new());

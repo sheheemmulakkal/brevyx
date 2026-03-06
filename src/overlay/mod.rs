@@ -1,4 +1,4 @@
-//! Full-screen overlay window controller for ZenGuard.
+//! Full-screen overlay window controller for Brevyx.
 //!
 //! # Responsibilities
 //! - Owns the [`tokio::sync::mpsc`] receiver that the [`crate::scheduler`]
@@ -49,7 +49,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, info, warn};
 
-use crate::config::ZenGuardConfig;
+use crate::config::BrevyxConfig;
 use crate::scheduler::reminder::Reminder;
 
 // ── OverlayController ─────────────────────────────────────────────────────────
@@ -60,18 +60,18 @@ use crate::scheduler::reminder::Reminder;
 /// # Usage
 /// ```no_run
 /// use tokio::sync::{mpsc, watch};
-/// use zenguard::config::ZenGuardConfig;
-/// use zenguard::overlay::OverlayController;
+/// use brevyx::config::BrevyxConfig;
+/// use brevyx::overlay::OverlayController;
 ///
 /// let (tx, rx)       = mpsc::channel(8);
-/// let (cfg_tx, cfg_rx) = watch::channel(ZenGuardConfig::default());
+/// let (cfg_tx, cfg_rx) = watch::channel(BrevyxConfig::default());
 ///
 /// // Must be called from the GTK main thread (e.g. inside activate()):
 /// OverlayController::new(rx, cfg_rx).start();
 /// ```
 pub struct OverlayController {
     reminder_rx: mpsc::Receiver<Reminder>,
-    config_rx: watch::Receiver<ZenGuardConfig>,
+    config_rx: watch::Receiver<BrevyxConfig>,
 }
 
 impl OverlayController {
@@ -84,7 +84,7 @@ impl OverlayController {
     ///   take effect without restarting the controller.
     pub fn new(
         reminder_rx: mpsc::Receiver<Reminder>,
-        config_rx: watch::Receiver<ZenGuardConfig>,
+        config_rx: watch::Receiver<BrevyxConfig>,
     ) -> Self {
         Self {
             reminder_rx,

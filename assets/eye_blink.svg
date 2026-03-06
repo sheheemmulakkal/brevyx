@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ZenGuard Eye Animation SVG
+  Brevyx Eye Animation SVG
   The CSS animation class "eye-animation" is applied by GTK4 to the
   <image> widget that wraps this SVG.  CSS keyframes (blink / breathe)
   animate the widget's opacity at the GTK4 layer, so no in-SVG animation

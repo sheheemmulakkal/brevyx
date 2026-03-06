@@ -1,4 +1,4 @@
-//! ZenGuard library crate.
+//! Brevyx library crate.
 //!
 //! All subsystems are exposed as public modules so that the binary crate
 //! (`src/main.rs`) and integration tests (`tests/`) can import them directly.

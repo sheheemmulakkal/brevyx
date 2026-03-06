@@ -1,0 +1,28 @@
+# systemd user unit — installed by the .deb package
+# Binary is at /usr/bin/brevyx when installed via .deb
+[Unit]
+Description=Brevyx — Wellness Reminder Daemon
+Documentation=https://github.com/sheheemmulakkal/brevyx
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/brevyx
+Restart=on-failure
+RestartSec=5s
+
+# Give the GTK4 display / Wayland socket time to become available
+ExecStartPre=/bin/sleep 3
+
+PassEnvironment=DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS
+Environment=RUST_LOG=info
+
+MemoryMax=128M
+CPUQuota=10%
+
+KillSignal=SIGTERM
+TimeoutStopSec=5s
+
+[Install]
+WantedBy=default.target

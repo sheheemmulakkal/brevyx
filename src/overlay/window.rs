@@ -43,23 +43,23 @@ use crate::scheduler::reminder::Reminder;
 /// Window / typography CSS.  `{{DIM_OPACITY}}` is replaced at build time.
 const OVERLAY_CSS_TEMPLATE: &str = "
 /* Transparent window surface — alpha compositing shows the dim overlay */
-window.zenguard-window {
+window.brevyx-window {
     background: none;
 }
 
 /* Main backdrop */
-.zenguard-overlay {
+.brevyx-overlay {
     background-color: rgba(8, 8, 18, {{DIM_OPACITY}});
 }
 
 /* Reminder icon (emoji) */
-.zenguard-icon {
+.brevyx-icon {
     font-size: 52px;
     margin-bottom: 4px;
 }
 
 /* Reminder title */
-.zenguard-title {
+.brevyx-title {
     font-size: 26px;
     font-weight: bold;
     color: #e0e0f2;
@@ -68,7 +68,7 @@ window.zenguard-window {
 }
 
 /* Reminder body message */
-.zenguard-message {
+.brevyx-message {
     font-size: 17px;
     color: #8888b4;
     margin-top: 4px;
@@ -76,7 +76,7 @@ window.zenguard-window {
 }
 
 /* Live countdown */
-.zenguard-countdown {
+.brevyx-countdown {
     font-size: 13px;
     color: #406880;
     margin-top: 14px;
@@ -84,7 +84,7 @@ window.zenguard-window {
 }
 
 /* Skip button — pill style, subtle */
-.zenguard-skip {
+.brevyx-skip {
     margin:           20px;
     padding:          9px 30px;
     border-radius:    22px;
@@ -94,7 +94,7 @@ window.zenguard-window {
     font-size:        13px;
 }
 
-.zenguard-skip:hover {
+.brevyx-skip:hover {
     background-color: rgba(255, 255, 255, 0.13);
     color:            #a0a0c8;
     border-color:     rgba(255, 255, 255, 0.16);
@@ -169,11 +169,11 @@ impl OverlayWindow {
         let window = gtk4::Window::new();
         window.set_decorated(false);
         window.fullscreen();
-        window.add_css_class("zenguard-window");
+        window.add_css_class("brevyx-window");
 
         // ── Root box (fills the window, carries the dim background) ───────────
         let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-        root.add_css_class("zenguard-overlay");
+        root.add_css_class("brevyx-overlay");
 
         // ── Flexible top spacer ───────────────────────────────────────────────
         let top_spacer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
@@ -189,7 +189,7 @@ impl OverlayWindow {
         // Icon (emoji or default clock)
         let icon_text = reminder.config.icon.as_deref().unwrap_or("⏰");
         let icon_label = gtk4::Label::new(Some(icon_text));
-        icon_label.add_css_class("zenguard-icon");
+        icon_label.add_css_class("brevyx-icon");
         icon_label.set_halign(gtk4::Align::Center);
         content.append(&icon_label);
 
@@ -205,13 +205,13 @@ impl OverlayWindow {
 
         // Title
         let title_label = gtk4::Label::new(Some(&reminder.config.label));
-        title_label.add_css_class("zenguard-title");
+        title_label.add_css_class("brevyx-title");
         title_label.set_halign(gtk4::Align::Center);
         content.append(&title_label);
 
         // Message
         let msg_label = gtk4::Label::new(Some(&reminder.message));
-        msg_label.add_css_class("zenguard-message");
+        msg_label.add_css_class("brevyx-message");
         msg_label.set_halign(gtk4::Align::Center);
         msg_label.set_wrap(true);
         msg_label.set_wrap_mode(gtk4::pango::WrapMode::WordChar);
@@ -221,7 +221,7 @@ impl OverlayWindow {
         // Countdown
         let duration_secs = overlay_cfg.duration_seconds;
         let countdown = gtk4::Label::new(Some(&fmt_countdown(duration_secs)));
-        countdown.add_css_class("zenguard-countdown");
+        countdown.add_css_class("brevyx-countdown");
         countdown.set_halign(gtk4::Align::Center);
         content.append(&countdown);
 
@@ -234,7 +234,7 @@ impl OverlayWindow {
 
         // ── Skip button ───────────────────────────────────────────────────────
         let skip_btn = gtk4::Button::with_label("Skip \u{2192}");
-        skip_btn.add_css_class("zenguard-skip");
+        skip_btn.add_css_class("brevyx-skip");
         skip_btn.set_halign(gtk4::Align::Center);
         skip_btn.set_visible(false);
         root.append(&skip_btn);

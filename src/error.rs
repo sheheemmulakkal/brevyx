@@ -1,19 +1,19 @@
-//! Unified error types for ZenGuard.
+//! Unified error types for Brevyx.
 //!
 //! All fallible public functions return [`anyhow::Result`] at the call-site,
 //! which provides automatic context chaining and coloured error reports.
-//! This module additionally provides [`ZenGuardError`] — a
+//! This module additionally provides [`BrevyxError`] — a
 //! [`thiserror`]-derived enum — for cases where callers need to pattern-match
 //! on the error kind (e.g. distinguishing a parse failure from an I/O error).
 
 use thiserror::Error;
 
-/// Domain-specific error variants for ZenGuard.
+/// Domain-specific error variants for Brevyx.
 ///
 /// Use [`anyhow::Context`] to attach context before returning these from
 /// library functions; surface them to users via the [`anyhow`] chain.
 #[derive(Debug, Error)]
-pub enum ZenGuardError {
+pub enum BrevyxError {
     /// A problem reading, parsing, or writing the TOML configuration.
     #[error("configuration error: {0}")]
     Config(String),

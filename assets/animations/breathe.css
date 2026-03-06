@@ -1,5 +1,5 @@
 /*
- * ZenGuard — Breathe animation
+ * Brevyx — Breathe animation
  *
  * A slow inhale-exhale cycle using only `opacity`, which is the one
  * property GTK4's CSS engine reliably animates inside @keyframes.

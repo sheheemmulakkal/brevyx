@@ -1,5 +1,5 @@
 /*
- * ZenGuard — Blink Eye animation
+ * Brevyx — Blink Eye animation
  *
  * A natural double-blink cycle using only `opacity`, which is the one
  * property GTK4's CSS engine reliably animates inside @keyframes.

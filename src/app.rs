@@ -1,7 +1,7 @@
-//! GTK4 application bootstrap for ZenGuard.
+//! GTK4 application bootstrap for Brevyx.
 //!
 //! # Responsibilities
-//! - Create the [`gtk4::Application`] with application ID `com.zenguard.app`.
+//! - Create the [`gtk4::Application`] with application ID `com.brevyx.app`.
 //! - Build and manage a [`tokio::runtime::Runtime`] alongside the GTK4 event
 //!   loop: Tokio runs on a background thread pool; GTK4 owns the main thread.
 //! - Wire the `activate` signal to [`crate::daemon::Daemon::start`].
@@ -31,7 +31,7 @@ use anyhow::{Context, Result};
 use gtk4::prelude::*;
 use tracing::{error, info};
 
-use crate::config::ZenGuardConfig;
+use crate::config::BrevyxConfig;
 use crate::daemon::Daemon;
 
 /// Builds and runs the GTK4 application until the user quits.
@@ -47,7 +47,7 @@ use crate::daemon::Daemon;
 /// # Errors
 /// Returns an error if the Tokio runtime cannot be constructed.  All other
 /// errors are logged and cause the application to request a clean exit.
-pub fn build_and_run(initial_cfg: ZenGuardConfig, config_path: PathBuf) -> Result<()> {
+pub fn build_and_run(initial_cfg: BrevyxConfig, config_path: PathBuf) -> Result<()> {
     // ── Tokio runtime ─────────────────────────────────────────────────────────
     //
     // Built first so that its Handle can be cloned into the GTK activate
@@ -60,7 +60,7 @@ pub fn build_and_run(initial_cfg: ZenGuardConfig, config_path: PathBuf) -> Resul
 
     // ── GTK4 Application ──────────────────────────────────────────────────────
     let app = gtk4::Application::builder()
-        .application_id("com.zenguard.app")
+        .application_id("com.brevyx.app")
         .build();
 
     // Clone values captured by the activate closure.
@@ -72,7 +72,7 @@ pub fn build_and_run(initial_cfg: ZenGuardConfig, config_path: PathBuf) -> Resul
 
         // Hold the application open indefinitely.
         //
-        // GTK4 exits automatically when the last window closes.  ZenGuard is
+        // GTK4 exits automatically when the last window closes.  Brevyx is
         // a windowless daemon (overlays are short-lived and transient), so
         // without this guard the process would quit immediately after activate.
         // `hold()` returns an `ApplicationHoldGuard` (RAII) that calls

@@ -1,16 +1,20 @@
 [package]
-name        = "zenguard"
+name        = "brevyx"
 version     = "0.1.0"
 edition     = "2021"
 description = "Production-grade Ubuntu wellness daemon with animated GTK4 reminders"
 license     = "MIT"
+homepage    = "https://github.com/sheheemmulakkal/brevyx"
+repository  = "https://github.com/sheheemmulakkal/brevyx"
+keywords    = ["health", "eye-care", "reminder", "gtk", "daemon"]
+categories  = ["command-line-utilities"]
 
 [lib]
-name = "zenguard"
+name = "brevyx"
 path = "src/lib.rs"
 
 [[bin]]
-name = "zenguard"
+name = "brevyx"
 path = "src/main.rs"
 
 # ── UI ────────────────────────────────────────────────────────────────────────
@@ -110,3 +114,33 @@ opt-level     = 3
 lto           = "thin"
 codegen-units = 1
 strip         = "symbols"
+
+# ── cargo-deb packaging ───────────────────────────────────────────────────────
+[package.metadata.deb]
+maintainer          = "Brevyx Contributors"
+copyright           = "2024, Brevyx Contributors"
+license-file        = ["LICENSE", "0"]
+extended-description = """\
+Brevyx runs silently as a systemd user service and shows full-screen \
+animated overlay popups at configurable intervals, reminding you to rest \
+your eyes, drink water, move, and take breaks."""
+depends   = "$auto, libgtk-4-1 (>= 4.12), librsvg2-common, libayatana-appindicator3-1"
+section   = "utils"
+priority  = "optional"
+assets    = [
+  # binary
+  ["target/release/brevyx",        "usr/bin/",                  "755"],
+  # bundled assets
+  ["assets/eye_blink.svg",           "usr/share/brevyx/",       "644"],
+  ["config/default_config.toml",     "usr/share/brevyx/",       "644"],
+  # documentation
+  ["README.md",                      "usr/share/doc/brevyx/",   "644"],
+  ["LICENSE",                        "usr/share/doc/brevyx/",   "644"],
+]
+
+[package.metadata.deb.systemd-units]
+# installs packaging/brevyx.service to /usr/lib/systemd/user/
+# enable = false so the user opts in via `systemctl --user enable brevyx`
+unit-scripts = "packaging/"
+enable       = false
+start        = false

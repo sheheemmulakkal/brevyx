@@ -1,6 +1,6 @@
 //! Integration test: scheduler → reminder channel pipeline.
 //!
-//! These tests exercise the public API of the `zenguard` library crate
+//! These tests exercise the public API of the `brevyx` library crate
 //! without requiring a running GTK4 display.  The overlay is represented by
 //! the receiving end of the `tokio::sync::mpsc` channel — a "null sink" that
 //! proves reminders are delivered at the correct times.
@@ -11,16 +11,16 @@
 use std::time::Duration;
 
 use tokio::sync::{mpsc, watch};
-use zenguard::config::{ReminderConfig, ZenGuardConfig};
-use zenguard::scheduler::reminder::{Reminder, ReminderKind};
-use zenguard::scheduler::{PauseHandle, Scheduler};
+use brevyx::config::{ReminderConfig, BrevyxConfig};
+use brevyx::scheduler::reminder::{Reminder, ReminderKind};
+use brevyx::scheduler::{PauseHandle, Scheduler};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/// Builds a [`ZenGuardConfig`] with a single enabled reminder at the given
+/// Builds a [`BrevyxConfig`] with a single enabled reminder at the given
 /// interval, using an otherwise-default config.
-fn single_reminder_config(id: &str, interval_minutes: u64) -> ZenGuardConfig {
-    ZenGuardConfig {
+fn single_reminder_config(id: &str, interval_minutes: u64) -> BrevyxConfig {
+    BrevyxConfig {
         reminders: vec![ReminderConfig {
             id: id.to_owned(),
             label: id.to_owned(),
@@ -36,11 +36,11 @@ fn single_reminder_config(id: &str, interval_minutes: u64) -> ZenGuardConfig {
 /// Spawns a [`Scheduler`] on the current Tokio runtime and returns the
 /// reminder receiver and pause handle.
 fn start_scheduler(
-    cfg: ZenGuardConfig,
+    cfg: BrevyxConfig,
 ) -> (
     mpsc::Receiver<Reminder>,
     PauseHandle,
-    watch::Sender<ZenGuardConfig>,
+    watch::Sender<BrevyxConfig>,
 ) {
     let (cfg_tx, cfg_rx) = watch::channel(cfg);
     let (tx, rx) = mpsc::channel::<Reminder>(16);
@@ -144,7 +144,7 @@ async fn config_hot_reload_changes_interval() {
 /// interval.  The two deliveries are correctly separated.
 #[tokio::test(start_paused = true)]
 async fn multiple_reminders_fire_independently() {
-    let cfg = ZenGuardConfig {
+    let cfg = BrevyxConfig {
         reminders: vec![
             ReminderConfig {
                 id: "fast".into(),
@@ -209,12 +209,12 @@ async fn multiple_reminders_fire_independently() {
     drop(cfg_tx);
 }
 
-/// The `ZenGuardConfig::default()` overlay settings are the values documented
+/// The `BrevyxConfig::default()` overlay settings are the values documented
 /// in the spec (20 s duration, allow_skip, skip_after = 5 s).  Verified here
 /// so a future schema change is caught by the integration suite.
 #[test]
 fn default_overlay_config_matches_spec() {
-    let cfg = ZenGuardConfig::default();
+    let cfg = BrevyxConfig::default();
     let o = &cfg.overlay;
 
     assert_eq!(o.duration_seconds, 20, "default duration");
@@ -229,7 +229,7 @@ fn default_overlay_config_matches_spec() {
 /// Disabled reminders are not delivered, even if their interval elapses.
 #[tokio::test(start_paused = true)]
 async fn disabled_reminder_is_never_delivered() {
-    let cfg = ZenGuardConfig {
+    let cfg = BrevyxConfig {
         reminders: vec![ReminderConfig {
             id: "disabled".into(),
             label: "Disabled".into(),

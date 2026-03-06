@@ -1,4 +1,4 @@
-//! Daemon lifecycle management for ZenGuard.
+//! Daemon lifecycle management for Brevyx.
 //!
 //! The [`Daemon`] struct is the top-level orchestrator.  It owns or holds
 //! handles to every subsystem and is constructed once inside the GTK4
@@ -9,7 +9,7 @@
 //! ```text
 //! Daemon::start()
 //!   │
-//!   ├─ config::watch_config()      → watch::Receiver<ZenGuardConfig>
+//!   ├─ config::watch_config()      → watch::Receiver<BrevyxConfig>
 //!   │                                   ↓ (cloned into each consumer)
 //!   ├─ Scheduler::new(cfg_rx, tx)  → tokio task (background thread pool)
 //!   │       ↓ mpsc::Sender<Reminder>
@@ -43,7 +43,7 @@ use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
-use crate::config::{self, ZenGuardConfig};
+use crate::config::{self, BrevyxConfig};
 use crate::overlay::OverlayController;
 use crate::scheduler::reminder::Reminder;
 use crate::scheduler::{PauseHandle, Scheduler};
@@ -57,7 +57,7 @@ const REMINDER_CHANNEL_DEPTH: usize = 8;
 
 // ── DaemonState ───────────────────────────────────────────────────────────────
 
-/// Current operational state of the ZenGuard daemon.
+/// Current operational state of the Brevyx daemon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DaemonState {
     /// Scheduler is active; reminders fire on schedule.
@@ -86,7 +86,7 @@ pub struct Daemon {
 
     // ── Kept alive for the daemon's lifetime ─────────────────────────────────
     /// Live config receiver — closing this would stop the scheduler.
-    _config_rx: watch::Receiver<ZenGuardConfig>,
+    _config_rx: watch::Receiver<BrevyxConfig>,
     /// Scheduler background task — aborted on drop / stop.
     sched_task: JoinHandle<()>,
 }
@@ -104,7 +104,7 @@ impl Daemon {
     /// - `rt`          — Tokio runtime handle; the scheduler is spawned here.
     pub fn start(
         app: &gtk4::Application,
-        cfg: ZenGuardConfig,
+        cfg: BrevyxConfig,
         config_path: PathBuf,
         rt: &tokio::runtime::Handle,
     ) -> Result<Self> {
