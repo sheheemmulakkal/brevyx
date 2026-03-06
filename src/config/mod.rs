@@ -49,7 +49,7 @@ pub mod schema;
 // `use crate::config::schema::BrevyxConfig`.
 #[allow(unused_imports)]
 pub use schema::{
-    AnimationStyle, GeneralConfig, OverlayConfig, ReminderConfig, TrayConfig, BrevyxConfig,
+    AnimationStyle, BrevyxConfig, GeneralConfig, OverlayConfig, ReminderConfig, TrayConfig,
 };
 
 // ── Bundled default ────────────────────────────────────────────────────────────
@@ -130,10 +130,7 @@ pub fn load_config() -> Result<BrevyxConfig> {
 /// // rx.changed().await?;
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub fn watch_config(
-    path: PathBuf,
-    initial: BrevyxConfig,
-) -> Result<watch::Receiver<BrevyxConfig>> {
+pub fn watch_config(path: PathBuf, initial: BrevyxConfig) -> Result<watch::Receiver<BrevyxConfig>> {
     let (tx, rx) = watch::channel(initial);
 
     // Clone for the callback closure (path is also needed inside the thread)

@@ -56,7 +56,7 @@ use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
 use tracing::{debug, info, warn};
 
-use crate::config::{ReminderConfig, BrevyxConfig};
+use crate::config::{BrevyxConfig, ReminderConfig};
 use reminder::Reminder;
 
 // ── PauseHandle ────────────────────────────────────────────────────────────────
@@ -277,7 +277,7 @@ impl Scheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ReminderConfig, BrevyxConfig};
+    use crate::config::{BrevyxConfig, ReminderConfig};
     use tokio::sync::{mpsc, watch};
 
     // ── Test helpers ───────────────────────────────────────────────────────────

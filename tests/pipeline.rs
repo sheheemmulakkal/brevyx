@@ -10,10 +10,10 @@
 
 use std::time::Duration;
 
-use tokio::sync::{mpsc, watch};
-use brevyx::config::{ReminderConfig, BrevyxConfig};
+use brevyx::config::{BrevyxConfig, ReminderConfig};
 use brevyx::scheduler::reminder::{Reminder, ReminderKind};
 use brevyx::scheduler::{PauseHandle, Scheduler};
+use tokio::sync::{mpsc, watch};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
