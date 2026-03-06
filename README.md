@@ -35,19 +35,81 @@ water, move, and take breaks.
 
 ## Installation
 
-### Prerequisites
+### Option 1 — Debian / Ubuntu package (recommended)
+
+Download the `.deb` from the [latest GitHub release](https://github.com/sheheemmulakkal/brevyx/releases/latest)
+and install it:
 
 ```bash
-# GTK4 development headers + SVG loader (required)
+sudo apt install ./brevyx-*.deb
+```
+
+`apt` will automatically pull in all required runtime libraries.
+The systemd user service is **not** enabled automatically by the package — run
+the one-liner below after installing:
+
+```bash
+systemctl --user enable --now brevyx
+```
+
+**No Rust toolchain required.**
+
+---
+
+### Option 2 — Pre-built binary (tarball / single file)
+
+Download the `brevyx-vX.Y.Z-x86_64-linux` binary from the
+[latest GitHub release](https://github.com/sheheemmulakkal/brevyx/releases/latest),
+make it executable, and place it on your `PATH`:
+
+```bash
+chmod +x brevyx-*-x86_64-linux
+mv brevyx-*-x86_64-linux ~/.local/bin/brevyx
+```
+
+Install the required runtime libraries (no `-dev` headers needed):
+
+```bash
+sudo apt install \
+  libgtk-4-1 \
+  librsvg2-common \
+  libayatana-appindicator3-1
+```
+
+Then enable the service:
+
+```bash
+# Copy the unit file from the repo, or write it manually:
+mkdir -p ~/.config/systemd/user
+cp systemd/brevyx.service ~/.config/systemd/user/
+systemctl --user enable --now brevyx
+```
+
+**No Rust toolchain required.**
+
+---
+
+### Option 3 — Build from source (for developers / contributors)
+
+#### System dependencies
+
+```bash
+# GTK4 + SVG loader build-time headers (required)
 sudo apt install libgtk-4-dev pkg-config build-essential librsvg2-common
 
-# For the system-tray icon (optional — enables --features tray)
+# System-tray support (optional — enables --features tray)
 sudo apt install libgtk-3-dev libayatana-appindicator3-dev
 ```
 
-Rust toolchain: install from <https://rustup.rs> if not already present.
+#### Rust toolchain
 
-### Install
+Install from <https://rustup.rs> if not already present:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+#### Clone and install
 
 ```bash
 git clone https://github.com/sheheemmulakkal/brevyx.git
@@ -295,6 +357,34 @@ Properties you can animate: `opacity`, `transform` (scale, rotate), `filter`
 | Wayland layer-shell integration (true top-of-stack overlay) | Planned |
 | Per-reminder animation overrides | Planned |
 | Statistics panel (how many reminders taken vs skipped) | Planned |
+
+---
+
+## Contributing
+
+Brevyx is free and open-source software. Contributions are welcome!
+
+1. Fork the repository and create a feature branch.
+2. Make your changes — `cargo fmt` and `cargo clippy -- -D warnings` must pass.
+3. Add or update tests where relevant (`cargo test`).
+4. Open a pull request with a clear description of the change.
+
+If you find a bug or have a feature request, please open an
+[issue](https://github.com/sheheemmulakkal/brevyx/issues).
+
+### Development quick-start
+
+```bash
+git clone https://github.com/sheheemmulakkal/brevyx.git
+cd brevyx
+
+# Install build deps (see "Build from source" above)
+
+cargo build                        # debug build
+cargo test                         # run all unit tests
+cargo run -- --log-level debug     # run locally
+cargo build --release --features tray  # full release build with tray
+```
 
 ---
 
