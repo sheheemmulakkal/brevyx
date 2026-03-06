@@ -1,7 +1,7 @@
-//! ZenGuard binary entry point.
+//! Brevyx binary entry point.
 //!
 //! Parses CLI arguments, initialises the tracing subscriber, loads the
-//! configuration, and delegates to [`zenguard::app::build_and_run`].
+//! configuration, and delegates to [`brevyx::app::build_and_run`].
 
 use std::path::PathBuf;
 
@@ -18,7 +18,7 @@ fn main() -> Result<()> {
     while i < args.len() {
         match args[i].as_str() {
             "--version" | "-V" => {
-                println!("zenguard {}", env!("CARGO_PKG_VERSION"));
+                println!("brevyx {}", env!("CARGO_PKG_VERSION"));
                 return Ok(());
             }
             "--help" | "-h" => {
@@ -38,7 +38,7 @@ fn main() -> Result<()> {
                 }
             }
             other => {
-                eprintln!("zenguard: unknown argument '{other}' — try --help");
+                eprintln!("brevyx: unknown argument '{other}' — try --help");
             }
         }
         i += 1;
@@ -60,20 +60,20 @@ fn main() -> Result<()> {
 
     // ── Configuration ─────────────────────────────────────────────────────────
     let cfg = match &config_path_override {
-        Some(path) => zenguard::config::load_from_path(path)?,
-        None => zenguard::config::load_config()?,
+        Some(path) => brevyx::config::load_from_path(path)?,
+        None => brevyx::config::load_config()?,
     };
 
-    let config_path = config_path_override.unwrap_or_else(zenguard::config::config_path);
+    let config_path = config_path_override.unwrap_or_else(brevyx::config::config_path);
 
     // ── Run ───────────────────────────────────────────────────────────────────
-    zenguard::app::build_and_run(cfg, config_path)
+    brevyx::app::build_and_run(cfg, config_path)
 }
 
 fn print_help() {
     println!(
-        "ZenGuard {ver} — wellness reminders daemon\n\n\
-         Usage: zenguard [OPTIONS]\n\n\
+        "Brevyx {ver} — wellness reminders daemon\n\n\
+         Usage: brevyx [OPTIONS]\n\n\
          Options:\n  \
            -c, --config <PATH>        Use a custom config file\n  \
            -l, --log-level <LEVEL>    Set log level (trace|debug|info|warn|error)\n  \

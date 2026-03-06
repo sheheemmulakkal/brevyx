@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────────
-# ZenGuard uninstall script
+# Brevyx uninstall script
 # Removes the binary, assets, and systemd user service.
-# The user config (~/.config/zenguard/) is preserved by default.
+# The user config (~/.config/brevyx/) is preserved by default.
 #
 # Usage:
 #   ./uninstall.sh                # remove everything except config
@@ -10,12 +10,12 @@
 # ──────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-BIN_NAME="zenguard"
+BIN_NAME="brevyx"
 INSTALL_BIN="${HOME}/.local/bin/${BIN_NAME}"
 ASSETS_DIR="${HOME}/.local/share/${BIN_NAME}"
 SERVICE_DIR="${HOME}/.config/systemd/user"
 SERVICE_FILE="${SERVICE_DIR}/${BIN_NAME}.service"
-CONFIG_DIR="${HOME}/.config/zenguard"
+CONFIG_DIR="${HOME}/.config/brevyx"
 PURGE_CONFIG=false
 
 # ── Parse args ─────────────────────────────────────────────────────────────
@@ -89,5 +89,5 @@ fi
 
 # ── Done ───────────────────────────────────────────────────────────────────
 echo ""
-green "✓  ZenGuard uninstalled."
+green "✓  Brevyx uninstalled."
 echo ""

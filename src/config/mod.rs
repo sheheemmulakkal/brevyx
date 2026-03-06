@@ -1,11 +1,11 @@
-//! Configuration loading, persistence, and hot-reload for ZenGuard.
+//! Configuration loading, persistence, and hot-reload for Brevyx.
 //!
 //! # Overview
 //!
 //! ```text
 //! disk                   load_config()           watch_config()
 //!  ┌─────────────────────┐         ┌──────────────────────────────────┐
-//!  │ config.toml         │──parse──▶  ZenGuardConfig (initial value)  │
+//!  │ config.toml         │──parse──▶  BrevyxConfig (initial value)  │
 //!  │ (or bundled default)│         │                                  │
 //!  └─────────────────────┘         │  tokio::sync::watch::Receiver    │
 //!          ▲  file-change           │  updated on every save           │
@@ -16,7 +16,7 @@
 //! # Usage
 //!
 //! ```ignore
-//! use zenguard::config;
+//! use brevyx::config;
 //!
 //! // One-shot load (synchronous):
 //! let cfg = config::load_config()?;
@@ -31,8 +31,8 @@
 //!
 //! `load_config` resolves the config file in this order:
 //!
-//! 1. `$XDG_CONFIG_HOME/zenguard/config.toml`
-//!    (typically `~/.config/zenguard/config.toml`)
+//! 1. `$XDG_CONFIG_HOME/brevyx/config.toml`
+//!    (typically `~/.config/brevyx/config.toml`)
 //! 2. If the file does not exist, the bundled `config/default_config.toml`
 //!    is written to that path and parsed, giving the user a starting point.
 
@@ -45,11 +45,11 @@ use tracing::{debug, error, info, warn};
 
 pub mod schema;
 // Re-export the full schema surface so downstream modules (Phase 2+) can
-// write `use crate::config::ZenGuardConfig` instead of
-// `use crate::config::schema::ZenGuardConfig`.
+// write `use crate::config::BrevyxConfig` instead of
+// `use crate::config::schema::BrevyxConfig`.
 #[allow(unused_imports)]
 pub use schema::{
-    AnimationStyle, GeneralConfig, OverlayConfig, ReminderConfig, TrayConfig, ZenGuardConfig,
+    AnimationStyle, GeneralConfig, OverlayConfig, ReminderConfig, TrayConfig, BrevyxConfig,
 };
 
 // ── Bundled default ────────────────────────────────────────────────────────────
@@ -62,21 +62,21 @@ const BUNDLED_DEFAULT_TOML: &str = include_str!("../../config/default_config.tom
 // ── Path helpers ───────────────────────────────────────────────────────────────
 
 /// Returns the canonical user config path:
-/// `$XDG_CONFIG_HOME/zenguard/config.toml` (usually
-/// `~/.config/zenguard/config.toml`).
+/// `$XDG_CONFIG_HOME/brevyx/config.toml` (usually
+/// `~/.config/brevyx/config.toml`).
 pub fn config_path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| {
             // Rare fallback for systems without $HOME set
             PathBuf::from("/tmp")
         })
-        .join("zenguard")
+        .join("brevyx")
         .join("config.toml")
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────────
 
-/// Loads [`ZenGuardConfig`] from `config_path()`.
+/// Loads [`BrevyxConfig`] from `config_path()`.
 ///
 /// If the config file does not yet exist the bundled default is written there
 /// and parsed, so the user always has an editable starting point.
@@ -90,11 +90,11 @@ pub fn config_path() -> PathBuf {
 /// # Example
 ///
 /// ```no_run
-/// let config = zenguard::config::load_config()?;
+/// let config = brevyx::config::load_config()?;
 /// println!("log level: {}", config.general.log_level);
 /// # Ok::<(), anyhow::Error>(())
 /// ```
-pub fn load_config() -> Result<ZenGuardConfig> {
+pub fn load_config() -> Result<BrevyxConfig> {
     load_from_path(&config_path())
 }
 
@@ -102,7 +102,7 @@ pub fn load_config() -> Result<ZenGuardConfig> {
 /// whenever `path` changes on disk.
 ///
 /// Returns a [`watch::Receiver`] that always holds the latest
-/// [`ZenGuardConfig`].  Clone the receiver to share it across threads or
+/// [`BrevyxConfig`].  Clone the receiver to share it across threads or
 /// tasks; call [`watch::Receiver::borrow`] (sync) or
 /// [`watch::Receiver::changed`] (async) to consume updates.
 ///
@@ -118,7 +118,7 @@ pub fn load_config() -> Result<ZenGuardConfig> {
 /// # Example
 ///
 /// ```no_run
-/// use zenguard::config;
+/// use brevyx::config;
 ///
 /// let initial = config::load_config()?;
 /// let rx = config::watch_config(config::config_path(), initial)?;
@@ -132,8 +132,8 @@ pub fn load_config() -> Result<ZenGuardConfig> {
 /// ```
 pub fn watch_config(
     path: PathBuf,
-    initial: ZenGuardConfig,
-) -> Result<watch::Receiver<ZenGuardConfig>> {
+    initial: BrevyxConfig,
+) -> Result<watch::Receiver<BrevyxConfig>> {
     let (tx, rx) = watch::channel(initial);
 
     // Clone for the callback closure (path is also needed inside the thread)
@@ -179,7 +179,7 @@ pub fn watch_config(
     // The watcher itself delivers events via its internal inotify thread;
     // this thread just holds the watcher object so it isn't dropped.
     std::thread::Builder::new()
-        .name("zenguard-config-watcher".into())
+        .name("brevyx-config-watcher".into())
         .spawn(move || {
             // Block forever — the OS will clean up when the process exits.
             let (_sentinel_tx, sentinel_rx) = std::sync::mpsc::channel::<()>();
@@ -202,7 +202,7 @@ pub fn watch_config(
 ///
 /// This function is `pub(crate)` so unit tests can call it with an arbitrary
 /// path without going through `config_path()`.
-pub fn load_from_path(path: &Path) -> Result<ZenGuardConfig> {
+pub fn load_from_path(path: &Path) -> Result<BrevyxConfig> {
     if !path.exists() {
         info!(
             path = %path.display(),
@@ -353,7 +353,7 @@ pause_on_startup = true
 "#;
         std::fs::write(&path, sparse).unwrap();
         let cfg = load_from_path(&path).expect("sparse config should load");
-        let def = ZenGuardConfig::default();
+        let def = BrevyxConfig::default();
 
         // Overridden fields
         assert_eq!(cfg.general.log_level, "warn");
@@ -405,7 +405,7 @@ pause_on_startup = true
         std::fs::write(&path, "").unwrap(); // empty TOML is valid
 
         let cfg = load_from_path(&path).expect("empty config should load");
-        assert_eq!(cfg, ZenGuardConfig::default());
+        assert_eq!(cfg, BrevyxConfig::default());
     }
 
     // ── Test 3: Invalid TOML returns a descriptive error ───────────────────────
@@ -481,7 +481,7 @@ animation_style = "does_not_exist"
     /// always syntactically and structurally valid.
     #[test]
     fn bundled_default_toml_is_valid() {
-        let result: Result<ZenGuardConfig, _> = toml::from_str(BUNDLED_DEFAULT_TOML);
+        let result: Result<BrevyxConfig, _> = toml::from_str(BUNDLED_DEFAULT_TOML);
         assert!(
             result.is_ok(),
             "bundled default_config.toml must always be valid: {:?}",

@@ -16,8 +16,8 @@
 //!
 //! # Usage
 //! ```no_run
-//! use zenguard::config::AnimationStyle;
-//! use zenguard::overlay::animation::{AnimationManager, load_animation_css};
+//! use brevyx::config::AnimationStyle;
+//! use brevyx::overlay::animation::{AnimationManager, load_animation_css};
 //!
 //! let css     = load_animation_css(&AnimationStyle::BlinkEye, 20);
 //! let manager = AnimationManager::new(&css);

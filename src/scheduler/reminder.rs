@@ -55,7 +55,7 @@ pub enum ReminderKind {
 ///
 /// # Example
 /// ```
-/// use zenguard::scheduler::reminder::ReminderKind;
+/// use brevyx::scheduler::reminder::ReminderKind;
 /// assert_eq!(ReminderKind::from("look_away"), ReminderKind::LookAway);
 /// assert_eq!(ReminderKind::from("unknown"),   ReminderKind::Custom("unknown".into()));
 /// ```
@@ -119,8 +119,8 @@ pub struct Reminder {
 ///
 /// # Example
 /// ```
-/// use zenguard::config::ReminderConfig;
-/// use zenguard::scheduler::reminder::{Reminder, ReminderKind};
+/// use brevyx::config::ReminderConfig;
+/// use brevyx::scheduler::reminder::{Reminder, ReminderKind};
 ///
 /// let cfg = ReminderConfig { id: "look_away".into(), ..Default::default() };
 /// let r   = Reminder::from(&cfg);

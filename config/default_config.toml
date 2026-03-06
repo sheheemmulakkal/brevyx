@@ -1,12 +1,12 @@
-# ZenGuard — Default Configuration
+# Brevyx — Default Configuration
 # ─────────────────────────────────────────────────────────────────────────────
-# This file is the *reference copy* shipped with ZenGuard and is also embedded
+# This file is the *reference copy* shipped with Brevyx and is also embedded
 # into the binary as a compile-time fallback (via include_str!).
 #
 # The *live* config is located at:
-#   ~/.config/zenguard/config.toml
+#   ~/.config/brevyx/config.toml
 #
-# ZenGuard writes this file there on first run if it does not exist, giving
+# Brevyx writes this file there on first run if it does not exist, giving
 # you an editable starting point.  Changes to the live file take effect
 # within a few seconds (hot-reload via inotify).
 #
@@ -15,7 +15,7 @@
 # ── General ───────────────────────────────────────────────────────────────────
 [general]
 # Tracing log level: trace | debug | info | warn | error
-# Override at runtime: RUST_LOG=debug zenguard
+# Override at runtime: RUST_LOG=debug brevyx
 log_level = "info"
 
 # Register the systemd user service automatically on install.

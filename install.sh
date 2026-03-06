@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────────
-# ZenGuard install script
+# Brevyx install script
 # Installs the binary, assets, and (optionally) the systemd user service.
 #
 # Usage:
@@ -9,7 +9,7 @@
 # ──────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-BIN_NAME="zenguard"
+BIN_NAME="brevyx"
 INSTALL_BIN="${HOME}/.local/bin/${BIN_NAME}"
 ASSETS_DIR="${HOME}/.local/share/${BIN_NAME}"
 SERVICE_DIR="${HOME}/.config/systemd/user"
@@ -79,7 +79,7 @@ fi
 green "    Dependencies OK"
 
 # ── Build ──────────────────────────────────────────────────────────────────
-blue "==> Building ZenGuard (release)..."
+blue "==> Building Brevyx (release)..."
 cargo build --release
 green "    Build complete"
 
@@ -112,7 +112,7 @@ fi
 green "    Assets installed"
 
 # ── Write default config (if not already present) ──────────────────────────
-CONFIG_PATH="${HOME}/.config/zenguard/config.toml"
+CONFIG_PATH="${HOME}/.config/brevyx/config.toml"
 if [[ ! -f "${CONFIG_PATH}" ]]; then
     blue "==> Writing default config to ${CONFIG_PATH}..."
     mkdir -p "$(dirname "${CONFIG_PATH}")"
@@ -155,7 +155,7 @@ fi
 
 # ── Done ───────────────────────────────────────────────────────────────────
 echo ""
-green "✓  ZenGuard installed successfully!"
+green "✓  Brevyx installed successfully!"
 echo ""
 echo "  Binary:  ${INSTALL_BIN}"
 echo "  Assets:  ${ASSETS_DIR}"

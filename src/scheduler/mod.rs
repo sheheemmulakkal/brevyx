@@ -1,4 +1,4 @@
-//! Reminder scheduler for ZenGuard.
+//! Reminder scheduler for Brevyx.
 //!
 //! Spawns one `tokio` interval task per enabled [`ReminderConfig`] entry and
 //! fires [`Reminder`] values over a `tokio::sync::mpsc` channel when an
@@ -30,9 +30,9 @@
 //!
 //! # Usage
 //! ```ignore
-//! # use zenguard::scheduler::Scheduler;
+//! # use brevyx::scheduler::Scheduler;
 //! # use tokio::sync::mpsc;
-//! // config_rx: watch::Receiver<ZenGuardConfig> from config::watch_config()
+//! // config_rx: watch::Receiver<BrevyxConfig> from config::watch_config()
 //! // tx:        mpsc::Sender<Reminder> — give the rx half to the overlay
 //! let scheduler = Scheduler::new(config_rx, tx);
 //! let pause     = scheduler.pause_handle();     // grab before run() consumes self
@@ -56,7 +56,7 @@ use tokio::task::JoinSet;
 use tokio::time::MissedTickBehavior;
 use tracing::{debug, info, warn};
 
-use crate::config::{ReminderConfig, ZenGuardConfig};
+use crate::config::{ReminderConfig, BrevyxConfig};
 use reminder::Reminder;
 
 // ── PauseHandle ────────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ impl PauseHandle {
 /// (i.e. the config sender is dropped at daemon shutdown).
 pub struct Scheduler {
     /// Receives updated configs from the file-watcher (Observer pattern subject).
-    config_rx: watch::Receiver<ZenGuardConfig>,
+    config_rx: watch::Receiver<BrevyxConfig>,
     /// Channel endpoint; cloned into each per-reminder task (Command pattern queue).
     sender: mpsc::Sender<Reminder>,
     /// Shared pause flag, also held by every distributed [`PauseHandle`].
@@ -135,7 +135,7 @@ impl Scheduler {
     /// - `sender` — sending half of a `tokio::sync::mpsc` channel; the caller
     ///   owns the receiving half and processes [`Reminder`] values as they
     ///   arrive.
-    pub fn new(config_rx: watch::Receiver<ZenGuardConfig>, sender: mpsc::Sender<Reminder>) -> Self {
+    pub fn new(config_rx: watch::Receiver<BrevyxConfig>, sender: mpsc::Sender<Reminder>) -> Self {
         Self {
             config_rx,
             sender,
@@ -277,14 +277,14 @@ impl Scheduler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ReminderConfig, ZenGuardConfig};
+    use crate::config::{ReminderConfig, BrevyxConfig};
     use tokio::sync::{mpsc, watch};
 
     // ── Test helpers ───────────────────────────────────────────────────────────
 
-    /// Build a [`ZenGuardConfig`] with a single enabled reminder.
-    fn one_reminder(id: &str, interval_minutes: u64) -> ZenGuardConfig {
-        ZenGuardConfig {
+    /// Build a [`BrevyxConfig`] with a single enabled reminder.
+    fn one_reminder(id: &str, interval_minutes: u64) -> BrevyxConfig {
+        BrevyxConfig {
             reminders: vec![ReminderConfig {
                 id: id.to_owned(),
                 label: id.to_owned(),

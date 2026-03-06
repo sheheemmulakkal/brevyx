@@ -1,4 +1,4 @@
-# ZenGuard Makefile
+# Brevyx Makefile
 #
 # Targets:
 #   make build     — debug build
@@ -10,7 +10,7 @@
 #   make fmt       — auto-format with cargo fmt
 #   make clean     — remove build artefacts
 
-BIN        := zenguard
+BIN        := brevyx
 CARGO      := cargo
 INSTALL_SH := ./install.sh
 
