@@ -130,6 +130,12 @@ pub struct OverlayConfig {
     ///
     /// Has no effect when `allow_skip` is `false`.
     pub skip_after_seconds: u64,
+
+    /// How to display reminders that arrive at the same time.
+    ///
+    /// - `"sequential"` — show them one after another (default).
+    /// - `"simultaneous"` — show all of them together as cards on one overlay.
+    pub display_mode: DisplayMode,
 }
 
 impl Default for OverlayConfig {
@@ -139,9 +145,32 @@ impl Default for OverlayConfig {
             dim_opacity: 0.92,
             duration_seconds: 20,
             allow_skip: true,
-            skip_after_seconds: 5,
+            skip_after_seconds: 0,
+            display_mode: DisplayMode::default(),
         }
     }
+}
+
+// ── DisplayMode ────────────────────────────────────────────────────────────────
+
+/// Controls how simultaneous reminders are presented.
+///
+/// # TOML
+/// ```toml
+/// [overlay]
+/// display_mode = "sequential"   # or "simultaneous"
+/// ```
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DisplayMode {
+    /// Show reminders one after another.  Each overlay must be dismissed
+    /// (or auto-expire) before the next one appears.
+    #[default]
+    Sequential,
+
+    /// Collect all reminders that arrive in the same poll window and show
+    /// them together in a single overlay as side-by-side cards.
+    Simultaneous,
 }
 
 // ── AnimationStyle ─────────────────────────────────────────────────────────────

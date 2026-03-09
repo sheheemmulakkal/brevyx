@@ -49,7 +49,8 @@ pub mod schema;
 // `use crate::config::schema::BrevyxConfig`.
 #[allow(unused_imports)]
 pub use schema::{
-    AnimationStyle, BrevyxConfig, GeneralConfig, OverlayConfig, ReminderConfig, TrayConfig,
+    AnimationStyle, BrevyxConfig, DisplayMode, GeneralConfig, OverlayConfig, ReminderConfig,
+    TrayConfig,
 };
 
 // ── Bundled default ────────────────────────────────────────────────────────────

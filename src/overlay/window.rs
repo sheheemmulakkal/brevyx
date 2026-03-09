@@ -99,6 +99,40 @@ window.brevyx-window {
     color:            #a0a0c8;
     border-color:     rgba(255, 255, 255, 0.16);
 }
+
+/* ── Simultaneous mode: reminder cards ─────────────────────────── */
+
+/* Card container — rounded panel for one reminder */
+.brevyx-card {
+    background-color: rgba(255, 255, 255, 0.05);
+    border:           1px solid rgba(255, 255, 255, 0.08);
+    border-radius:    16px;
+    padding:          24px 28px;
+    margin:           0 12px;
+    min-width:        200px;
+}
+
+/* Card icon (slightly smaller than single-reminder icon) */
+.brevyx-card-icon {
+    font-size: 36px;
+    margin-bottom: 6px;
+}
+
+/* Card title */
+.brevyx-card-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #e0e0f2;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+/* Card message */
+.brevyx-card-message {
+    font-size: 14px;
+    color: #8888b4;
+    margin-top: 2px;
+}
 ";
 
 // ── OverlayWindow ─────────────────────────────────────────────────────────────
@@ -333,6 +367,170 @@ impl OverlayWindow {
         }
     }
 
+    /// Builds a single overlay window showing **multiple** reminders as
+    /// side-by-side cards.  Used when `display_mode = "simultaneous"`.
+    ///
+    /// The countdown, auto-dismiss timer, and skip button are shared across
+    /// all cards — the same duration and skip settings from `overlay_cfg` apply.
+    pub fn build_multi(
+        reminders: &[Reminder],
+        overlay_cfg: &OverlayConfig,
+        on_closed: impl Fn() + 'static,
+    ) -> Self {
+        // ── CSS providers (identical to single-reminder build) ────────────────
+        let overlay_css = OVERLAY_CSS_TEMPLATE.replace(
+            "{{DIM_OPACITY}}",
+            &format!("{:.2}", overlay_cfg.dim_opacity),
+        );
+
+        let anim_css = load_animation_css(
+            &overlay_cfg.animation_style,
+            overlay_cfg.duration_seconds as u32,
+        );
+
+        let style_provider = Rc::new(gtk4::CssProvider::new());
+        style_provider.load_from_string(&overlay_css);
+
+        let anim_manager = Rc::new(AnimationManager::new(&anim_css));
+
+        if let Some(display) = gdk4::Display::default() {
+            gtk4::style_context_add_provider_for_display(
+                &display,
+                &*style_provider,
+                gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+            anim_manager.apply(&display);
+        }
+
+        // ── Window ────────────────────────────────────────────────────────────
+        let window = gtk4::Window::new();
+        window.set_decorated(false);
+        window.fullscreen();
+        window.add_css_class("brevyx-window");
+
+        let root = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        root.add_css_class("brevyx-overlay");
+
+        let top_spacer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        top_spacer.set_vexpand(true);
+        root.append(&top_spacer);
+
+        // ── Content ───────────────────────────────────────────────────────────
+        let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        content.set_halign(gtk4::Align::Center);
+
+        // Shared eye animation at the top
+        let eye_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        eye_box.set_halign(gtk4::Align::Center);
+        eye_box.set_margin_bottom(24);
+        if let Some(picture) = build_eye_picture() {
+            eye_box.append(&picture);
+        }
+        content.append(&eye_box);
+
+        // Horizontal row of reminder cards
+        let cards_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        cards_row.set_halign(gtk4::Align::Center);
+        for reminder in reminders {
+            cards_row.append(&build_reminder_card(reminder));
+        }
+        content.append(&cards_row);
+
+        // Shared countdown
+        let duration_secs = overlay_cfg.duration_seconds;
+        let countdown = gtk4::Label::new(Some(&fmt_countdown(duration_secs)));
+        countdown.add_css_class("brevyx-countdown");
+        countdown.set_halign(gtk4::Align::Center);
+        countdown.set_margin_top(20);
+        content.append(&countdown);
+
+        root.append(&content);
+
+        let bot_spacer = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        bot_spacer.set_vexpand(true);
+        root.append(&bot_spacer);
+
+        // ── Skip button ───────────────────────────────────────────────────────
+        let skip_btn = gtk4::Button::with_label("Skip \u{2192}");
+        skip_btn.add_css_class("brevyx-skip");
+        skip_btn.set_halign(gtk4::Align::Center);
+        skip_btn.set_visible(false);
+        root.append(&skip_btn);
+
+        window.set_child(Some(&root));
+
+        // ── Countdown tick ────────────────────────────────────────────────────
+        {
+            let remaining = Rc::new(Cell::new(duration_secs));
+            let cd_weak = countdown.downgrade();
+            glib::timeout_add_local(Duration::from_secs(1), move || {
+                let Some(label) = cd_weak.upgrade() else {
+                    return ControlFlow::Break;
+                };
+                let r = remaining.get();
+                if r == 0 {
+                    return ControlFlow::Break;
+                }
+                let new_r = r.saturating_sub(1);
+                remaining.set(new_r);
+                label.set_text(&fmt_countdown(new_r));
+                ControlFlow::Continue
+            });
+        }
+
+        // ── Auto-dismiss ──────────────────────────────────────────────────────
+        {
+            let win_weak = window.downgrade();
+            let dismiss_after = duration_secs.saturating_add(1);
+            glib::timeout_add_local(Duration::from_secs(dismiss_after), move || {
+                if let Some(w) = win_weak.upgrade() {
+                    debug!("Auto-dismissing multi-overlay ({}s elapsed)", duration_secs);
+                    w.close();
+                }
+                ControlFlow::Break
+            });
+        }
+
+        // ── Skip button visibility + click ────────────────────────────────────
+        if overlay_cfg.allow_skip {
+            let skip_after_ms = overlay_cfg.skip_after_seconds.saturating_mul(1000).max(100);
+            let skip_weak = skip_btn.downgrade();
+            glib::timeout_add_local(Duration::from_millis(skip_after_ms), move || {
+                if let Some(btn) = skip_weak.upgrade() {
+                    btn.set_visible(true);
+                }
+                ControlFlow::Break
+            });
+
+            let win_weak = window.downgrade();
+            skip_btn.connect_clicked(move |_| {
+                if let Some(w) = win_weak.upgrade() {
+                    debug!("User skipped multi-overlay");
+                    w.close();
+                }
+            });
+        }
+
+        // ── CSS cleanup + on_closed callback ──────────────────────────────────
+        let sp_clone = Rc::clone(&style_provider);
+        let am_clone = Rc::clone(&anim_manager);
+        window.connect_close_request(move |w| {
+            if let Some(display) = gdk4::Display::default() {
+                gtk4::style_context_remove_provider_for_display(&display, &*sp_clone);
+                am_clone.remove(&display);
+            }
+            on_closed();
+            w.set_visible(false);
+            glib::Propagation::Stop
+        });
+
+        Self {
+            window,
+            _style_provider: style_provider,
+            _anim_manager: anim_manager,
+        }
+    }
+
     /// Makes the overlay window visible on screen.
     ///
     /// Must be called from the GTK main thread after [`OverlayWindow::build`].
@@ -342,6 +540,35 @@ impl OverlayWindow {
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
+
+/// Builds a single reminder card widget for use inside a simultaneous overlay.
+fn build_reminder_card(reminder: &Reminder) -> gtk4::Box {
+    let card = gtk4::Box::new(gtk4::Orientation::Vertical, 6);
+    card.add_css_class("brevyx-card");
+    card.set_halign(gtk4::Align::Center);
+    card.set_valign(gtk4::Align::Center);
+
+    let icon_text = reminder.config.icon.as_deref().unwrap_or("⏰");
+    let icon = gtk4::Label::new(Some(icon_text));
+    icon.add_css_class("brevyx-card-icon");
+    icon.set_halign(gtk4::Align::Center);
+
+    let title = gtk4::Label::new(Some(&reminder.config.label));
+    title.add_css_class("brevyx-card-title");
+    title.set_halign(gtk4::Align::Center);
+
+    let msg = gtk4::Label::new(Some(&reminder.message));
+    msg.add_css_class("brevyx-card-message");
+    msg.set_halign(gtk4::Align::Center);
+    msg.set_wrap(true);
+    msg.set_wrap_mode(gtk4::pango::WrapMode::WordChar);
+    msg.set_max_width_chars(28);
+
+    card.append(&icon);
+    card.append(&title);
+    card.append(&msg);
+    card
+}
 
 /// Loads the bundled eye SVG and returns a [`gtk4::Picture`] with the
 /// `.eye-animation` CSS class.  Returns `None` if the texture cannot be

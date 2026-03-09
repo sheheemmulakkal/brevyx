@@ -96,6 +96,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843867be96c8daad0d758b57df9392b6d8d271134fce549de6ce169ff98a92af"
 
 [[package]]
+name = "brevyx"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "appindicator3",
+ "chrono",
+ "dirs",
+ "gdk4",
+ "gio 0.20.12",
+ "glib 0.20.12",
+ "gtk",
+ "gtk4",
+ "notify",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.2",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2356,29 +2379,6 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
-]
-
-[[package]]
-name = "brevyx"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "appindicator3",
- "chrono",
- "dirs",
- "gdk4",
- "gio 0.20.12",
- "glib 0.20.12",
- "gtk",
- "gtk4",
- "notify",
- "serde",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "toml 0.8.2",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

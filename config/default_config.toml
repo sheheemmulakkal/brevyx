@@ -49,7 +49,12 @@ allow_skip = true
 
 # Seconds into the countdown before the Skip button becomes visible.
 # Has no effect when allow_skip = false.
-skip_after_seconds = 5
+skip_after_seconds = 0
+
+# How to display reminders that fire at the same time:
+#   "sequential"   — show them one after another (default)
+#   "simultaneous" — show all reminders together as side-by-side cards on one overlay
+display_mode = "sequential"
 
 # ── Reminders ──────────────────────────────────────────────────────────────────
 # Each [[reminders]] entry defines one reminder category.

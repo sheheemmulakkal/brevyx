@@ -7,9 +7,9 @@
 //!   [`glib::timeout_add_local`] (no `Send` requirement).
 //! - Instantiates an [`window::OverlayWindow`] for each incoming reminder and
 //!   presents it on screen.
-//! - Enforces the **no-stack invariant**: at most one overlay is shown at a
-//!   time.  Reminders that arrive while an overlay is active are silently
-//!   dropped (logged at `debug`).
+//! - Shows overlays sequentially: at most one overlay is shown at a time.
+//!   Reminders that arrive while an overlay is active are queued (FIFO) and
+//!   shown in order after the current overlay closes.
 //! - Reads the live [`crate::config::OverlayConfig`] from a
 //!   [`tokio::sync::watch`] receiver so that config hot-reloads take effect
 //!   on the *next* overlay without restarting the controller.
@@ -40,7 +40,8 @@
 pub mod animation;
 pub mod window;
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::rc::Rc;
 use std::time::Duration;
 
@@ -49,7 +50,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::{mpsc, watch};
 use tracing::{debug, info, warn};
 
-use crate::config::BrevyxConfig;
+use crate::config::{BrevyxConfig, DisplayMode};
 use crate::scheduler::reminder::Reminder;
 
 // ── OverlayController ─────────────────────────────────────────────────────────
@@ -106,9 +107,10 @@ impl OverlayController {
         info!("OverlayController starting poll timer");
 
         // ── Shared state ─────────────────────────────────────────────────────
-        // `active`  — true while an overlay window is visible.
-        // `current` — holds the OverlayWindow so the GTK window stays alive.
-        let active: Rc<Cell<bool>> = Rc::new(Cell::new(false));
+        // `queue`   — reminders waiting to be shown (FIFO).
+        // `current` — holds the active OverlayWindow so the GTK window stays alive.
+        //             `None` means no overlay is currently on screen.
+        let queue: Rc<RefCell<VecDeque<Reminder>>> = Rc::new(RefCell::new(VecDeque::new()));
         let current: Rc<RefCell<Option<window::OverlayWindow>>> = Rc::new(RefCell::new(None));
 
         // Wrap the receiver in Rc<RefCell> so the closure can hold it without
@@ -117,53 +119,69 @@ impl OverlayController {
         let cfg_rx = self.config_rx;
 
         glib::timeout_add_local(Duration::from_millis(200), move || {
-            let poll_result = rx.borrow_mut().try_recv();
+            // 1. Drain all newly-arrived reminders into the local queue.
+            loop {
+                match rx.borrow_mut().try_recv() {
+                    Ok(reminder) => {
+                        debug!(id = %reminder.id, "Queuing reminder");
+                        queue.borrow_mut().push_back(reminder);
+                    }
+                    Err(TryRecvError::Empty) => break,
+                    Err(TryRecvError::Disconnected) => {
+                        warn!("Reminder channel disconnected — overlay controller stopping");
+                        return ControlFlow::Break;
+                    }
+                }
+            }
 
-            match poll_result {
-                Ok(reminder) => {
-                    if active.get() {
-                        debug!(
-                            id = %reminder.id,
-                            "Overlay already visible — reminder dropped"
-                        );
-                        return ControlFlow::Continue;
+            // 2. If no overlay is showing, show the next item(s) from the queue.
+            if current.borrow().is_none() {
+                let cfg_snapshot = cfg_rx.borrow().overlay.clone();
+
+                let overlay = match cfg_snapshot.display_mode {
+                    // ── Sequential: show one reminder at a time ───────────────
+                    DisplayMode::Sequential => {
+                        let next = queue.borrow_mut().pop_front();
+                        next.map(|reminder| {
+                            let remaining = queue.borrow().len();
+                            info!(
+                                id = %reminder.id,
+                                kind = %reminder.kind,
+                                queued = remaining,
+                                "Showing overlay (sequential)"
+                            );
+                            let current_c = Rc::clone(&current);
+                            let ov = window::OverlayWindow::build(&reminder, &cfg_snapshot, move || {
+                                debug!("Overlay closed — ready for next reminder");
+                                *current_c.borrow_mut() = None;
+                            });
+                            ov
+                        })
                     }
 
-                    // Snapshot the overlay config at fire-time so live
-                    // hot-reloads are visible on the next reminder.
-                    let overlay_cfg = cfg_rx.borrow().overlay.clone();
+                    // ── Simultaneous: drain the whole queue into one overlay ──
+                    DisplayMode::Simultaneous => {
+                        if queue.borrow().is_empty() {
+                            None
+                        } else {
+                            let batch: Vec<_> = queue.borrow_mut().drain(..).collect();
+                            info!(
+                                count = batch.len(),
+                                "Showing overlay (simultaneous)"
+                            );
+                            let current_c = Rc::clone(&current);
+                            let ov = window::OverlayWindow::build_multi(&batch, &cfg_snapshot, move || {
+                                debug!("Multi-overlay closed — ready for next batch");
+                                *current_c.borrow_mut() = None;
+                            });
+                            Some(ov)
+                        }
+                    }
+                };
 
-                    info!(id = %reminder.id, kind = %reminder.kind, "Showing overlay");
-                    active.set(true);
-
-                    // Clone handles for the on_closed callback.
-                    let active_c = Rc::clone(&active);
-                    let current_c = Rc::clone(&current);
-
-                    let overlay =
-                        window::OverlayWindow::build(&reminder, &overlay_cfg, move || {
-                            debug!("Overlay closed — controller ready for next reminder");
-                            active_c.set(false);
-                            // Drop the OverlayWindow — releases GTK resources.
-                            *current_c.borrow_mut() = None;
-                        });
-
-                    overlay.present();
-
-                    // Store the overlay so the GTK window stays alive.
-                    // This assignment happens before any GTK events are
-                    // processed, so the window cannot close between present()
-                    // and here.
-                    *current.borrow_mut() = Some(overlay);
-                }
-
-                Err(TryRecvError::Empty) => {
-                    // No reminder pending — nothing to do this tick.
-                }
-
-                Err(TryRecvError::Disconnected) => {
-                    warn!("Reminder channel disconnected — overlay controller stopping");
-                    return ControlFlow::Break;
+                if let Some(ov) = overlay {
+                    ov.present();
+                    *current.borrow_mut() = Some(ov);
                 }
             }
 
