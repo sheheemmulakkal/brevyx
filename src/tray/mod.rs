@@ -206,7 +206,7 @@ fn spawn_tray_impl(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'stati
             menu.append(&quit_item);
 
             menu.show_all();
-            indicator.set_menu(&mut menu.clone());
+            indicator.set_menu(Some(&menu));
 
             // ── Sync pause/resume visibility (1 s poll) ───────────────────────
             //
