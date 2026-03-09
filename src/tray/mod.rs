@@ -117,7 +117,8 @@ pub fn spawn_tray(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'static
 
 #[cfg(feature = "tray")]
 fn spawn_tray_impl(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'static) -> TrayHandle {
-    use appindicator3::{Indicator, IndicatorStatus};
+    use appindicator3::prelude::AppIndicatorExt;
+    use appindicator3::{Indicator, IndicatorCategory, IndicatorStatus};
     use glib::ControlFlow;
     use gtk::prelude::*;
     use std::time::Duration;
@@ -137,7 +138,7 @@ fn spawn_tray_impl(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'stati
             }
 
             // ── AppIndicator ─────────────────────────────────────────────────
-            let mut indicator = Indicator::new("brevyx", "");
+            let mut indicator = Indicator::new("brevyx", "", IndicatorCategory::ApplicationStatus);
             // Prefer a themed icon; fall back gracefully if absent.
             if let Some(data_dir) = dirs::data_local_dir() {
                 let icon_dir = data_dir.join("brevyx");
