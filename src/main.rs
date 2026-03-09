@@ -9,6 +9,20 @@ use anyhow::Result;
 use tracing_subscriber::{fmt, EnvFilter};
 
 fn main() -> Result<()> {
+    // ── Display backend (tray feature only) ───────────────────────────────────
+    //
+    // When the `tray` feature is enabled, GTK3 (appindicator3) and GTK4 are
+    // both loaded in the same process.  On Wayland they race to claim the
+    // compositor connection and GTK4's gtk_init() fails with "GTK was not
+    // actually initialized".  Forcing X11 (via XWayland) for both lets them
+    // share the display connection without conflict.
+    //
+    // This must be set BEFORE any GTK or GDK code runs.
+    #[cfg(feature = "tray")]
+    if std::env::var("GDK_BACKEND").is_err() {
+        std::env::set_var("GDK_BACKEND", "x11");
+    }
+
     // ── CLI argument parsing ──────────────────────────────────────────────────
     let args: Vec<String> = std::env::args().collect();
     let mut config_path_override: Option<PathBuf> = None;

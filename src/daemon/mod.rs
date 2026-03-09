@@ -259,16 +259,3 @@ mod libc_signum {
     pub const SIGINT: i32 = 2;
     pub const SIGTERM: i32 = 15;
 }
-
-// ── Periodic tray-state refresh ───────────────────────────────────────────────
-//
-// The tray thread caches pause state in an Arc<Mutex<TrayState>>.  This timer
-// is a safety net that keeps the tray in sync even if a race condition causes
-// a missed update.  Only registered when the tray feature is enabled.
-#[cfg(feature = "tray")]
-pub(crate) fn register_tray_sync_timer(pause_handle: PauseHandle, tray_handle: tray::TrayHandle) {
-    glib::timeout_add_local(Duration::from_secs(5), move || {
-        tray_handle.set_paused(pause_handle.is_paused());
-        ControlFlow::Continue
-    });
-}

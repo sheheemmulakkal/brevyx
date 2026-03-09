@@ -138,7 +138,7 @@ fn spawn_tray_impl(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'stati
             }
 
             // ── AppIndicator ─────────────────────────────────────────────────
-            let mut indicator = Indicator::new("brevyx", "", IndicatorCategory::ApplicationStatus);
+            let indicator = Indicator::new("brevyx", "", IndicatorCategory::ApplicationStatus);
             // Prefer a themed icon; fall back gracefully if absent.
             if let Some(data_dir) = dirs::data_local_dir() {
                 let icon_dir = data_dir.join("brevyx");
