@@ -1,239 +1,146 @@
 //! System-tray icon for Brevyx.
 //!
 //! # Backend
-//! Uses the `appindicator3` crate, which wraps the Ayatana AppIndicator
-//! library (`libayatana-appindicator3`), the standard Ubuntu/GNOME tray
-//! protocol.
-//!
-//! Build requirement (only when the `tray` feature is enabled):
-//! ```sh
-//! sudo apt install libgtk-3-dev libayatana-appindicator3-dev
-//! ```
-//!
-//! # Feature gate
-//! The entire implementation is behind `#[cfg(feature = "tray")]`.  When the
-//! feature is disabled every public function and type compiles to a no-op stub
-//! so the rest of the codebase can call into this module unconditionally.
+//! Uses [`ksni`], which implements the **StatusNotifierItem** D-Bus protocol
+//! directly — no GTK3 or system library headers required.  Works on both X11
+//! and Wayland without conflicting with the GTK4 main thread.
 //!
 //! # Thread model
-//! The tray icon runs in a **dedicated OS thread** with its own GLib main
-//! context and a GTK3 (`gtk`) main loop.  This keeps it isolated from the
-//! GTK4 main thread.  Communication channels:
-//!
-//! - **Daemon → Tray**: `Arc<Mutex<TrayState>>` polled every second.
-//! - **Tray → Daemon**: direct calls to [`PauseHandle`] (atomic) and an
-//!   `on_quit` closure that schedules `app.quit()` via
-//!   `glib::MainContext::default().invoke(...)` (cross-thread safe).
+//! `ksni::run_in_background` spawns its own thread and owns the tray state.
+//! The [`TrayHandle`] returned here wraps the ksni handle for state updates.
 //!
 //! # Menu structure
 //! ```text
-//! ● Brevyx — Active        (non-interactive label)
+//! ● Brevyx                     (non-interactive label)
 //! ──────────────────
-//!   Pause                    (hidden when paused)
-//!   Resume                   (hidden when running)
-//! ──────────────────
-//!   Settings  (coming soon)  (insensitive)
+//!   Pause / Resume
 //! ──────────────────
 //!   Quit
 //! ```
 
-use tracing::debug;
-
-#[cfg(feature = "tray")]
-use std::sync::{Arc, Mutex};
+use tracing::{debug, info};
 
 use crate::scheduler::PauseHandle;
 
-// ── TrayState (shared between GTK main thread and tray thread) ────────────────
+// ── BrevyxTray (ksni Tray impl) ───────────────────────────────────────────────
 
-/// Runtime state mirrored into the tray thread for menu label sync.
-#[derive(Debug, Default, Clone)]
-#[cfg_attr(not(feature = "tray"), allow(dead_code))]
-struct TrayState {
-    paused: bool,
+struct BrevyxTray {
+    pause_handle: PauseHandle,
+    quit_tx: std::sync::mpsc::SyncSender<()>,
+}
+
+impl ksni::Tray for BrevyxTray {
+    fn icon_name(&self) -> String {
+        // Use a standard freedesktop icon as fallback; themed "brevyx" icon
+        // will be picked up automatically if installed to the icon theme path.
+        "dialog-information".into()
+    }
+
+    fn title(&self) -> String {
+        "Brevyx".into()
+    }
+
+    fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
+        use ksni::menu::*;
+
+        let paused = self.pause_handle.is_paused();
+        let toggle_label = if paused { "Resume" } else { "Pause" };
+
+        vec![
+            StandardItem {
+                label: "Brevyx".into(),
+                enabled: false,
+                ..Default::default()
+            }
+            .into(),
+            MenuItem::Separator,
+            StandardItem {
+                label: toggle_label.into(),
+                activate: Box::new(|tray: &mut BrevyxTray| {
+                    if tray.pause_handle.is_paused() {
+                        tray.pause_handle.resume();
+                        info!("Tray: daemon resumed");
+                    } else {
+                        tray.pause_handle.pause();
+                        info!("Tray: daemon paused");
+                    }
+                }),
+                ..Default::default()
+            }
+            .into(),
+            MenuItem::Separator,
+            StandardItem {
+                label: "Quit".into(),
+                activate: Box::new(|tray: &mut BrevyxTray| {
+                    info!("Tray: quit selected");
+                    let _ = tray.quit_tx.send(());
+                }),
+                ..Default::default()
+            }
+            .into(),
+        ]
+    }
 }
 
 // ── TrayHandle ────────────────────────────────────────────────────────────────
 
-/// Opaque handle for updating the tray icon state from the daemon.
-///
-/// Cheap to clone.  All methods are no-ops when the `tray` Cargo feature is
-/// disabled, so callers need no conditional compilation.
+/// Opaque handle for interacting with the tray icon after it is spawned.
 pub struct TrayHandle {
-    #[cfg(feature = "tray")]
-    state: Arc<Mutex<TrayState>>,
-
-    // Phantom unit field so the struct is always non-empty without the feature.
-    #[cfg(not(feature = "tray"))]
-    _private: (),
+    _handle: Option<ksni::Handle<BrevyxTray>>,
 }
 
 impl TrayHandle {
-    /// Reflects a new paused/running state into the tray menu.
+    /// Notifies the tray that the pause state changed so the menu label
+    /// refreshes on the next user interaction.
     ///
-    /// The tray thread picks up the change within ~1 second (poll interval).
+    /// With `ksni` the menu reads `pause_handle.is_paused()` directly, so
+    /// no explicit state sync is required.  This method is kept for API
+    /// compatibility with call sites in the daemon.
     pub fn set_paused(&self, paused: bool) {
-        #[cfg(feature = "tray")]
-        {
-            debug!("TrayHandle::set_paused({})", paused);
-            if let Ok(mut s) = self.state.lock() {
-                s.paused = paused;
-            }
-        }
-
-        #[cfg(not(feature = "tray"))]
-        let _ = paused;
+        debug!("TrayHandle::set_paused({paused}) — menu reads live state");
     }
 }
 
 // ── spawn_tray ────────────────────────────────────────────────────────────────
 
-/// Spawns the tray subsystem and returns a [`TrayHandle`] for state updates.
+/// Spawns the tray icon in a background thread and returns a [`TrayHandle`].
 ///
-/// When the `tray` feature is disabled this is a no-op that returns an inert
-/// handle.
+/// If no StatusNotifierHost is available (e.g. no compatible system tray
+/// extension is running), the icon is silently absent — the daemon continues
+/// normally.
 ///
 /// # Parameters
-/// - `pause_handle` — used by the Pause/Resume menu items to toggle the
-///   scheduler directly (no round-trip through the daemon needed).
-/// - `on_quit`      — called on the tray thread when the user clicks Quit;
-///   **must** schedule `app.quit()` on the GTK4 main thread (e.g. via
-///   `glib::MainContext::default().invoke(...)`).
+/// - `pause_handle` — shared atomic flag; the Pause/Resume menu item toggles
+///   it directly without a round-trip through the GTK4 main thread.
+/// - `on_quit`      — called when the user clicks Quit. The caller is
+///   responsible for routing this to `app.quit()` on the GTK4 main thread
+///   (e.g. via the sync-channel + glib poll pattern in the daemon).
 pub fn spawn_tray(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'static) -> TrayHandle {
-    #[cfg(feature = "tray")]
-    {
-        spawn_tray_impl(pause_handle, on_quit)
-    }
+    let (quit_tx, quit_rx) = std::sync::mpsc::sync_channel::<()>(1);
 
-    #[cfg(not(feature = "tray"))]
-    {
-        let _ = (pause_handle, on_quit);
-        debug!("Tray feature disabled — no system-tray icon");
-        TrayHandle { _private: () }
-    }
-}
-
-// ── Feature-gated implementation ─────────────────────────────────────────────
-
-#[cfg(feature = "tray")]
-fn spawn_tray_impl(pause_handle: PauseHandle, on_quit: impl Fn() + Send + 'static) -> TrayHandle {
-    use appindicator3::prelude::AppIndicatorExt;
-    use appindicator3::{Indicator, IndicatorCategory, IndicatorStatus};
-    use glib::ControlFlow;
-    use gtk::prelude::*;
-    use std::time::Duration;
-
-    let state = Arc::new(Mutex::new(TrayState::default()));
-    let state_for_thread = Arc::clone(&state);
-    let state_for_poll = Arc::clone(&state);
-
-    if let Err(e) = std::thread::Builder::new()
-        .name("brevyx-tray".into())
+    // Forward quit signal from the ksni callback to the on_quit closure on a
+    // tiny dedicated thread, keeping the ksni tray thread unblocked.
+    std::thread::Builder::new()
+        .name("brevyx-tray-quit".into())
         .spawn(move || {
-            // Initialise GTK3 on this dedicated thread.
-            // The tray uses GTK3 menus (appindicator3 requirement).
-            if gtk::init().is_err() {
-                tracing::error!("GTK3 init failed in tray thread — no tray icon");
-                return;
-            }
-
-            // ── AppIndicator ─────────────────────────────────────────────────
-            let indicator = Indicator::new("brevyx", "", IndicatorCategory::ApplicationStatus);
-            // Prefer a themed icon; fall back gracefully if absent.
-            if let Some(data_dir) = dirs::data_local_dir() {
-                let icon_dir = data_dir.join("brevyx");
-                if let Some(path) = icon_dir.to_str() {
-                    indicator.set_icon_theme_path(path);
-                }
-            }
-            indicator.set_icon_full("brevyx", "Brevyx");
-            indicator.set_status(IndicatorStatus::Active);
-
-            // ── GTK3 menu ────────────────────────────────────────────────────
-            let menu = gtk::Menu::new();
-
-            // Non-interactive title label
-            let title = gtk::MenuItem::with_label("Brevyx — Active");
-            title.set_sensitive(false);
-            menu.append(&title);
-            menu.append(&gtk::SeparatorMenuItem::new());
-
-            // Pause
-            let pause_item = gtk::MenuItem::with_label("Pause");
-            {
-                let ph = pause_handle.clone();
-                let st = Arc::clone(&state_for_thread);
-                pause_item.connect_activate(move |_| {
-                    ph.pause();
-                    if let Ok(mut s) = st.lock() {
-                        s.paused = true;
-                    }
-                    tracing::info!("Tray: daemon paused");
-                });
-            }
-            menu.append(&pause_item);
-
-            // Resume
-            let resume_item = gtk::MenuItem::with_label("Resume");
-            {
-                let ph = pause_handle.clone();
-                let st = Arc::clone(&state_for_thread);
-                resume_item.connect_activate(move |_| {
-                    ph.resume();
-                    if let Ok(mut s) = st.lock() {
-                        s.paused = false;
-                    }
-                    tracing::info!("Tray: daemon resumed");
-                });
-            }
-            menu.append(&resume_item);
-
-            menu.append(&gtk::SeparatorMenuItem::new());
-
-            // Settings (placeholder)
-            let settings = gtk::MenuItem::with_label("Settings (coming soon)");
-            settings.set_sensitive(false);
-            menu.append(&settings);
-
-            menu.append(&gtk::SeparatorMenuItem::new());
-
-            // Quit
-            let quit_item = gtk::MenuItem::with_label("Quit");
-            quit_item.connect_activate(move |_| {
-                tracing::info!("Tray: quit selected");
+            if quit_rx.recv().is_ok() {
                 on_quit();
-            });
-            menu.append(&quit_item);
-
-            menu.show_all();
-            indicator.set_menu(Some(&menu));
-
-            // ── Sync pause/resume visibility (1 s poll) ───────────────────────
-            //
-            // Reflects changes from daemon::pause() / resume() that go through
-            // the shared TrayState rather than the menu's own click handlers.
-            {
-                let pi = pause_item.downgrade();
-                let ri = resume_item.downgrade();
-                glib::timeout_add_local(Duration::from_secs(1), move || {
-                    let (Some(p), Some(r)) = (pi.upgrade(), ri.upgrade()) else {
-                        return ControlFlow::Break;
-                    };
-                    if let Ok(s) = state_for_poll.lock() {
-                        p.set_visible(!s.paused);
-                        r.set_visible(s.paused);
-                    }
-                    ControlFlow::Continue
-                });
             }
-
-            // Run the GTK3 main loop for this thread.
-            gtk::main();
-            tracing::debug!("Tray thread exiting");
         })
-    {
-        tracing::error!("Failed to spawn tray thread: {e} — no system-tray icon");
-    }
+        .expect("failed to spawn tray-quit thread");
 
-    TrayHandle { state }
+    let service = ksni::TrayService::new(BrevyxTray {
+        pause_handle,
+        quit_tx,
+    });
+    let handle = service.handle();
+    // `spawn` runs the D-Bus service on a background thread.
+    // If no StatusNotifierHost is present the icon is simply absent —
+    // the thread keeps running silently until the process exits.
+    service.spawn();
+    info!("System tray icon active (StatusNotifierItem)");
+
+    TrayHandle {
+        _handle: Some(handle),
+    }
 }

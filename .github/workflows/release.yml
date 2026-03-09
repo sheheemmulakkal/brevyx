@@ -34,8 +34,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libgtk-4-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
             librsvg2-common \
             pkg-config \
             build-essential \
@@ -52,14 +50,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Build release binary (with tray)
-        run: cargo build --release --features tray
+      - name: Build release binary
+        run: cargo build --release
 
       - name: Install cargo-deb
         run: cargo install cargo-deb --locked
 
       - name: Build .deb package
-        run: cargo deb --no-build --features tray
+        run: cargo deb --no-build
 
       - name: Extract version tag
         id: version
