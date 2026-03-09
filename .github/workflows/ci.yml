@@ -5,6 +5,7 @@ on:
     branches: ["master", "main"]
   pull_request:
     branches: ["master", "main"]
+  workflow_call: # allows release.yml to call this as a reusable workflow
 
 env:
   CARGO_TERM_COLOR: always
