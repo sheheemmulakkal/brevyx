@@ -93,3 +93,38 @@ jobs:
 
       - name: cargo test
         run: cargo test
+
+  # ── Tray feature compile check ────────────────────────────────────────────────
+  check-tray:
+    name: Check (tray feature)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install GTK4 + GTK3 + appindicator system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-4-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            pkg-config \
+            build-essential \
+            libglib2.0-dev
+
+      - name: Cache Cargo registry and build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-tray-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: cargo check --features tray
+        run: cargo check --features tray
