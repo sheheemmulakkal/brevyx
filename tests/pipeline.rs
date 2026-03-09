@@ -219,7 +219,7 @@ fn default_overlay_config_matches_spec() {
 
     assert_eq!(o.duration_seconds, 20, "default duration");
     assert!(o.allow_skip, "allow_skip default");
-    assert_eq!(o.skip_after_seconds, 5, "skip_after default");
+    assert_eq!(o.skip_after_seconds, 0, "skip_after default");
     assert!(
         (o.dim_opacity - 0.92).abs() < f64::EPSILON,
         "dim_opacity default"

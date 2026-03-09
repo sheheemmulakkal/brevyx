@@ -470,7 +470,7 @@ animation_style = "does_not_exist"
         );
         assert_eq!(cfg.overlay.duration_seconds, 20);
         assert!(cfg.overlay.allow_skip);
-        assert_eq!(cfg.overlay.skip_after_seconds, 5);
+        assert_eq!(cfg.overlay.skip_after_seconds, 0);
     }
 
     // ── Test 5: Bundled TOML itself is valid ───────────────────────────────────

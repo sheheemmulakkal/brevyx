@@ -151,10 +151,11 @@ impl OverlayController {
                                 "Showing overlay (sequential)"
                             );
                             let current_c = Rc::clone(&current);
-                            let ov = window::OverlayWindow::build(&reminder, &cfg_snapshot, move || {
-                                debug!("Overlay closed — ready for next reminder");
-                                *current_c.borrow_mut() = None;
-                            });
+                            let ov =
+                                window::OverlayWindow::build(&reminder, &cfg_snapshot, move || {
+                                    debug!("Overlay closed — ready for next reminder");
+                                    *current_c.borrow_mut() = None;
+                                });
                             ov
                         })
                     }
@@ -165,15 +166,16 @@ impl OverlayController {
                             None
                         } else {
                             let batch: Vec<_> = queue.borrow_mut().drain(..).collect();
-                            info!(
-                                count = batch.len(),
-                                "Showing overlay (simultaneous)"
-                            );
+                            info!(count = batch.len(), "Showing overlay (simultaneous)");
                             let current_c = Rc::clone(&current);
-                            let ov = window::OverlayWindow::build_multi(&batch, &cfg_snapshot, move || {
-                                debug!("Multi-overlay closed — ready for next batch");
-                                *current_c.borrow_mut() = None;
-                            });
+                            let ov = window::OverlayWindow::build_multi(
+                                &batch,
+                                &cfg_snapshot,
+                                move || {
+                                    debug!("Multi-overlay closed — ready for next batch");
+                                    *current_c.borrow_mut() = None;
+                                },
+                            );
                             Some(ov)
                         }
                     }
