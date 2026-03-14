@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# ──────────────────────────────────────────────────────────────────────────
-# Brevyx install script
-# Installs the binary, assets, and (optionally) the systemd user service.
+# ──────────────────────────────────────────────────────────────────────────────
+# Brevyx — one-command installer
+#
+# Downloads the latest pre-built .deb from GitHub Releases and installs it.
+# Requires: curl (or wget), sudo, apt (Debian/Ubuntu)
 #
 # Usage:
-#   ./install.sh            # release build + service enable
-#   ./install.sh --no-service   # install binary/assets only
-# ──────────────────────────────────────────────────────────────────────────
+#   curl -fsSL https://raw.githubusercontent.com/sheheemmulakkal/brevyx/master/install.sh | bash
+#   — or —
+#   bash install.sh [--no-service]
+# ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+REPO="sheheemmulakkal/brevyx"
 BIN_NAME="brevyx"
-INSTALL_BIN="${HOME}/.local/bin/${BIN_NAME}"
-ASSETS_DIR="${HOME}/.local/share/${BIN_NAME}"
-SERVICE_DIR="${HOME}/.config/systemd/user"
-SERVICE_FILE="systemd/${BIN_NAME}.service"
 ENABLE_SERVICE=true
 
 # ── Parse args ─────────────────────────────────────────────────────────────
@@ -31,140 +31,115 @@ for arg in "$@"; do
     esac
 done
 
-# ── Colour helpers ─────────────────────────────────────────────────────────
+# ── Colour helpers ──────────────────────────────────────────────────────────
 green() { printf '\033[0;32m%s\033[0m\n' "$*"; }
 blue()  { printf '\033[0;34m%s\033[0m\n' "$*"; }
 red()   { printf '\033[0;31m%s\033[0m\n' "$*" >&2; }
+warn()  { printf '\033[0;33m[WARN]\033[0m %s\n' "$*"; }
 
-# ── Pre-flight checks ──────────────────────────────────────────────────────
-blue "==> Checking dependencies..."
+# ── Pre-flight checks ───────────────────────────────────────────────────────
+blue "==> Checking requirements..."
 
-if ! command -v cargo &>/dev/null; then
-    red "cargo not found — install Rust from https://rustup.rs"
+if [[ "$(uname -s)" != "Linux" ]]; then
+    red "Brevyx only supports Linux."
     exit 1
 fi
 
-for dep in pkg-config; do
-    if ! command -v "$dep" &>/dev/null; then
-        red "Missing build dependency: $dep"
-        red "On Ubuntu: sudo apt install build-essential pkg-config"
-        exit 1
-    fi
-done
-
-# Check GTK4 dev headers
-if ! pkg-config --exists gtk4 2>/dev/null; then
-    red "GTK4 development headers not found."
-    red "On Ubuntu 24.04: sudo apt install libgtk-4-dev"
+if ! command -v apt-get &>/dev/null; then
+    red "apt-get not found — Brevyx .deb install requires a Debian/Ubuntu system."
     exit 1
 fi
 
-# Install runtime deps that are not pulled in by the GTK4 build itself.
-# librsvg2-common provides the gdk-pixbuf SVG loader so the eye graphic renders.
-RUNTIME_DEPS=()
-if ! dpkg -l librsvg2-common &>/dev/null 2>&1; then
-    RUNTIME_DEPS+=(librsvg2-common)
+if ! command -v sudo &>/dev/null; then
+    red "sudo is required to install the .deb package."
+    exit 1
 fi
 
-if [[ ${#RUNTIME_DEPS[@]} -gt 0 ]]; then
-    blue "==> Installing runtime dependencies: ${RUNTIME_DEPS[*]}..."
-    if command -v sudo &>/dev/null; then
-        sudo apt-get install -y "${RUNTIME_DEPS[@]}"
-    else
-        red "sudo not available — please run: apt-get install ${RUNTIME_DEPS[*]}"
-        exit 1
-    fi
-fi
-
-green "    Dependencies OK"
-
-# ── Build ──────────────────────────────────────────────────────────────────
-blue "==> Building Brevyx (release)..."
-cargo build --release
-green "    Build complete"
-
-# ── Install binary ─────────────────────────────────────────────────────────
-blue "==> Installing binary to ${INSTALL_BIN}..."
-mkdir -p "$(dirname "${INSTALL_BIN}")"
-install -m 755 "target/release/${BIN_NAME}" "${INSTALL_BIN}"
-green "    Binary installed"
-
-# ── Install assets ─────────────────────────────────────────────────────────
-blue "==> Installing assets to ${ASSETS_DIR}..."
-mkdir -p "${ASSETS_DIR}/animations"
-
-install -m 644 assets/eye_blink.svg         "${ASSETS_DIR}/eye_blink.svg"
-install -m 644 assets/animations/blink.css  "${ASSETS_DIR}/animations/blink.css"
-install -m 644 assets/animations/breathe.css "${ASSETS_DIR}/animations/breathe.css"
-
-# Install app icon if present
-if [[ -f assets/icon.png ]]; then
-    ICON_DIR="${HOME}/.local/share/icons/hicolor/256x256/apps"
-    mkdir -p "${ICON_DIR}"
-    install -m 644 assets/icon.png "${ICON_DIR}/${BIN_NAME}.png"
-    # Update icon cache if gtk-update-icon-cache is available
-    if command -v gtk-update-icon-cache &>/dev/null; then
-        gtk-update-icon-cache -f -t "${HOME}/.local/share/icons/hicolor" 2>/dev/null || true
-    fi
-    green "    Icon installed"
-fi
-
-green "    Assets installed"
-
-# ── Write default config (if not already present) ──────────────────────────
-CONFIG_PATH="${HOME}/.config/brevyx/config.toml"
-if [[ ! -f "${CONFIG_PATH}" ]]; then
-    blue "==> Writing default config to ${CONFIG_PATH}..."
-    mkdir -p "$(dirname "${CONFIG_PATH}")"
-    install -m 644 config/default_config.toml "${CONFIG_PATH}"
-    green "    Default config written"
+# Prefer curl, fall back to wget
+if command -v curl &>/dev/null; then
+    DOWNLOAD() { curl -fsSL -o "$1" "$2"; }
+    FETCH()     { curl -fsSL "$1"; }
+elif command -v wget &>/dev/null; then
+    DOWNLOAD() { wget -qO "$1" "$2"; }
+    FETCH()     { wget -qO- "$1"; }
 else
-    blue "==> Config already exists at ${CONFIG_PATH} — skipping"
+    red "curl or wget is required. Install one and retry."
+    exit 1
 fi
 
-# ── Ensure ~/.local/bin is on PATH ─────────────────────────────────────────
-if [[ ":${PATH}:" != *":${HOME}/.local/bin:"* ]]; then
-    printf '\n\033[0;33m[WARN]\033[0m %s is not in your PATH.\n' "${HOME}/.local/bin"
-    echo "      Add this to your shell profile (~/.bashrc, ~/.zshrc, ~/.config/fish/config.fish):"
-    echo "      export PATH=\"\$HOME/.local/bin:\$PATH\""
+green "    Requirements OK"
+
+# ── Discover latest release ─────────────────────────────────────────────────
+blue "==> Fetching latest release info from GitHub..."
+
+API_URL="https://api.github.com/repos/${REPO}/releases/latest"
+RELEASE_JSON=$(FETCH "$API_URL") || {
+    red "Failed to reach GitHub API. Check your internet connection."
+    exit 1
+}
+
+# Extract .deb download URL
+DEB_URL=$(printf '%s' "$RELEASE_JSON" \
+    | grep -o '"browser_download_url": *"[^"]*\.deb"' \
+    | grep -o 'https://[^"]*' \
+    | head -1)
+
+if [[ -z "$DEB_URL" ]]; then
+    red "No .deb asset found in the latest release."
+    red "Check https://github.com/${REPO}/releases for available assets."
+    exit 1
 fi
 
-# ── Systemd user service ────────────────────────────────────────────────────
+VERSION=$(printf '%s' "$RELEASE_JSON" \
+    | grep -o '"tag_name": *"[^"]*"' \
+    | grep -o '"[^"]*"$' \
+    | tr -d '"')
+
+green "    Latest release: ${VERSION}"
+
+# ── Download ────────────────────────────────────────────────────────────────
+TMPDIR_PATH=$(mktemp -d)
+trap 'rm -rf "$TMPDIR_PATH"' EXIT
+
+DEB_FILE="${TMPDIR_PATH}/${BIN_NAME}.deb"
+
+blue "==> Downloading ${BIN_NAME} ${VERSION}..."
+DOWNLOAD "$DEB_FILE" "$DEB_URL" || {
+    red "Download failed."
+    exit 1
+}
+green "    Download complete"
+
+# ── Install ─────────────────────────────────────────────────────────────────
+blue "==> Installing .deb package..."
+sudo apt-get install -y "$DEB_FILE"
+green "    Package installed"
+
+# ── Enable systemd user service ─────────────────────────────────────────────
 if [[ "${ENABLE_SERVICE}" == "true" ]]; then
-    blue "==> Installing systemd user service..."
-
-    if ! command -v systemctl &>/dev/null; then
-        printf '\033[0;33m[WARN]\033[0m systemctl not found — skipping service install\n'
-    else
-        mkdir -p "${SERVICE_DIR}"
-        install -m 644 "${SERVICE_FILE}" "${SERVICE_DIR}/${BIN_NAME}.service"
-
+    blue "==> Enabling systemd user service..."
+    if command -v systemctl &>/dev/null; then
         systemctl --user daemon-reload
         systemctl --user enable "${BIN_NAME}.service"
-        systemctl --user restart "${BIN_NAME}.service"
+        systemctl --user start  "${BIN_NAME}.service"
 
         sleep 1
         if systemctl --user is-active --quiet "${BIN_NAME}.service"; then
             green "    Service enabled and running"
         else
-            printf '\033[0;33m[WARN]\033[0m Service installed but may not be active yet.\n'
+            warn "Service installed but not yet active."
             printf '      Check with: systemctl --user status %s\n' "${BIN_NAME}"
         fi
+    else
+        warn "systemctl not found — skipping service setup"
     fi
 fi
 
-# ── Done ───────────────────────────────────────────────────────────────────
+# ── Done ────────────────────────────────────────────────────────────────────
 echo ""
-green "✓  Brevyx installed successfully!"
-echo ""
-echo "  Binary:  ${INSTALL_BIN}"
-echo "  Assets:  ${ASSETS_DIR}"
-echo "  Config:  ${CONFIG_PATH}"
-if [[ "${ENABLE_SERVICE}" == "true" ]]; then
-    echo "  Service: ${SERVICE_DIR}/${BIN_NAME}.service"
-fi
+green "✓  Brevyx ${VERSION} installed successfully!"
 echo ""
 echo "  Manage:  systemctl --user {start|stop|restart|status} ${BIN_NAME}"
 echo "  Logs:    journalctl --user -u ${BIN_NAME} -f"
-echo "  Config:  \$EDITOR ${CONFIG_PATH}"
+echo "  Config:  \$EDITOR \${HOME}/.config/${BIN_NAME}/config.toml"
 echo ""
