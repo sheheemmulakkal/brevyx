@@ -35,104 +35,69 @@ water, move, and take breaks.
 
 ## Installation
 
-### Option 1 — Debian / Ubuntu package (recommended)
+### Option 1 — One-line installer (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sheheemmulakkal/brevyx/master/install.sh | bash
+```
+
+This will:
+
+1. Fetch the latest `.deb` from GitHub Releases
+2. Install it via `apt` (pulls in all runtime dependencies automatically)
+3. Enable and start the systemd user service
+
+**No Rust toolchain required.** Requires `curl`, `sudo`, and `apt` (Debian/Ubuntu).
+
+To install without enabling the service:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sheheemmulakkal/brevyx/master/install.sh | bash -s -- --no-service
+```
+
+---
+
+### Option 2 — Manual .deb install
 
 Download the `.deb` from the [latest GitHub release](https://github.com/sheheemmulakkal/brevyx/releases/latest)
 and install it:
 
 ```bash
-sudo apt install ./brevyx-*.deb
-```
-
-`apt` will automatically pull in all required runtime libraries.
-The systemd user service is **not** enabled automatically by the package — run
-the one-liner below after installing:
-
-```bash
+sudo apt install ./brevyx_*.deb
 systemctl --user enable --now brevyx
 ```
 
-**No Rust toolchain required.**
-
 ---
 
-### Option 2 — Pre-built binary (tarball / single file)
+### Option 3 — Build from source (developers / contributors)
 
-Download the `brevyx-vX.Y.Z-x86_64-linux` binary from the
-[latest GitHub release](https://github.com/sheheemmulakkal/brevyx/releases/latest),
-make it executable, and place it on your `PATH`:
+#### Prerequisites
 
 ```bash
-chmod +x brevyx-*-x86_64-linux
-mv brevyx-*-x86_64-linux ~/.local/bin/brevyx
-```
-
-Install the required runtime libraries (no `-dev` headers needed):
-
-```bash
-sudo apt install \
-  libgtk-4-1 \
-  librsvg2-common \
-  libayatana-appindicator3-1
-```
-
-Then enable the service:
-
-```bash
-# Copy the unit file from the repo, or write it manually:
-mkdir -p ~/.config/systemd/user
-cp systemd/brevyx.service ~/.config/systemd/user/
-systemctl --user enable --now brevyx
-```
-
-**No Rust toolchain required.**
-
----
-
-### Option 3 — Build from source (for developers / contributors)
-
-#### System dependencies
-
-```bash
-# GTK4 + SVG loader build-time headers (required)
-sudo apt install libgtk-4-dev pkg-config build-essential librsvg2-common
-
-# System-tray support (optional — enables --features tray)
-sudo apt install libgtk-3-dev libayatana-appindicator3-dev
-```
-
-#### Rust toolchain
-
-Install from <https://rustup.rs> if not already present:
-
-```bash
+# Rust toolchain
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# GTK4 build-time headers
+sudo apt install libgtk-4-dev libdbus-1-dev pkg-config build-essential librsvg2-common
 ```
 
-#### Clone and install
+#### Clone and build
 
 ```bash
 git clone https://github.com/sheheemmulakkal/brevyx.git
 cd brevyx
-chmod +x install.sh
-./install.sh
-```
-
-The script will:
-
-1. Build the release binary (`cargo build --release`)
-2. Install the binary to `~/.local/bin/brevyx`
-3. Copy assets to `~/.local/share/brevyx/`
-4. Write the default config to `~/.config/brevyx/config.toml` (if absent)
-5. Install and enable the systemd user service (`brevyx.service`)
-
-To install without the systemd service (e.g. for manual launches):
-
-```bash
-./install.sh --no-service
+cargo build --release
 ```
 
 ### Uninstall
+
+If installed via `.deb`:
+
+```bash
+sudo apt remove brevyx
+```
+
+If built from source:
 
 ```bash
 ./uninstall.sh                # removes binary, assets, service; keeps config
