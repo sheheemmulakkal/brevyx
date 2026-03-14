@@ -135,30 +135,30 @@ if [[ ! -f "${USER_UNIT}" ]]; then
     if [[ -n "${SYSTEM_UNIT}" ]]; then
         cp "${SYSTEM_UNIT}" "${USER_UNIT}"
     else
-        # Fallback: write the unit file directly
-        cat > "${USER_UNIT}" <<'EOF'
-[Unit]
-Description=Brevyx — Wellness Reminder Daemon
-Documentation=https://github.com/sheheemmulakkal/brevyx
-After=graphical-session.target
-PartOf=graphical-session.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/brevyx
-Restart=on-failure
-RestartSec=5s
-ExecStartPre=/bin/sleep 3
-PassEnvironment=DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS
-Environment=RUST_LOG=info
-MemoryMax=128M
-CPUQuota=10%
-KillSignal=SIGTERM
-TimeoutStopSec=5s
-
-[Install]
-WantedBy=default.target
-EOF
+        # Fallback: write the unit file directly (no heredoc — incompatible with curl|bash)
+        printf '%s\n' \
+            '[Unit]' \
+            'Description=Brevyx — Wellness Reminder Daemon' \
+            'Documentation=https://github.com/sheheemmulakkal/brevyx' \
+            'After=graphical-session.target' \
+            'PartOf=graphical-session.target' \
+            '' \
+            '[Service]' \
+            'Type=simple' \
+            'ExecStart=/usr/bin/brevyx' \
+            'Restart=on-failure' \
+            'RestartSec=5s' \
+            'ExecStartPre=/bin/sleep 3' \
+            'PassEnvironment=DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS' \
+            'Environment=RUST_LOG=info' \
+            'MemoryMax=128M' \
+            'CPUQuota=10%' \
+            'KillSignal=SIGTERM' \
+            'TimeoutStopSec=5s' \
+            '' \
+            '[Install]' \
+            'WantedBy=default.target' \
+            > "${USER_UNIT}"
     fi
     green "    Unit file installed"
 fi
