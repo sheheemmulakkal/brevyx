@@ -115,6 +115,54 @@ blue "==> Installing .deb package..."
 sudo apt-get install -y "$DEB_FILE"
 green "    Package installed"
 
+# ── Ensure systemd user service unit is in place ────────────────────────────
+USER_UNIT_DIR="${HOME}/.config/systemd/user"
+USER_UNIT="${USER_UNIT_DIR}/${BIN_NAME}.service"
+
+if [[ ! -f "${USER_UNIT}" ]]; then
+    blue "==> Installing systemd user unit..."
+    mkdir -p "${USER_UNIT_DIR}"
+
+    # Look for the unit file installed by the .deb in system locations
+    SYSTEM_UNIT=""
+    for path in /usr/lib/systemd/user /lib/systemd/user /usr/lib/systemd/system /lib/systemd/system; do
+        if [[ -f "${path}/${BIN_NAME}.service" ]]; then
+            SYSTEM_UNIT="${path}/${BIN_NAME}.service"
+            break
+        fi
+    done
+
+    if [[ -n "${SYSTEM_UNIT}" ]]; then
+        cp "${SYSTEM_UNIT}" "${USER_UNIT}"
+    else
+        # Fallback: write the unit file directly
+        cat > "${USER_UNIT}" <<'EOF'
+[Unit]
+Description=Brevyx — Wellness Reminder Daemon
+Documentation=https://github.com/sheheemmulakkal/brevyx
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/brevyx
+Restart=on-failure
+RestartSec=5s
+ExecStartPre=/bin/sleep 3
+PassEnvironment=DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS
+Environment=RUST_LOG=info
+MemoryMax=128M
+CPUQuota=10%
+KillSignal=SIGTERM
+TimeoutStopSec=5s
+
+[Install]
+WantedBy=default.target
+EOF
+    fi
+    green "    Unit file installed"
+fi
+
 # ── Enable systemd user service ─────────────────────────────────────────────
 if [[ "${ENABLE_SERVICE}" == "true" ]]; then
     blue "==> Enabling systemd user service..."
